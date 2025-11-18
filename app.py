@@ -179,7 +179,7 @@ try:
         end_date = None
     
     # Load annotations from admin-editable file
-    ANNOTATIONS_FILE = "attached_assets/diary_1763476206890.xlsx"
+    ANNOTATIONS_FILE = "attached_assets/diary_1763478604977.xlsx"
     if os.path.exists(ANNOTATIONS_FILE):
         try:
             annotations_df = pd.read_excel(ANNOTATIONS_FILE)

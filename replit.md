@@ -47,8 +47,8 @@ Preferred communication style: Simple, everyday language.
 **Approach**: Auto-load data file with diary file for annotations
 - **Decision**: Auto-load specific data file and diary file from attached_assets folder
 - **Rationale**: Simplifies workflow for single-dataset use case; admin can edit diary file to manage annotations
-- **Data File**: `attached_assets/73 Oldfield Road - Full Data_1763474740403.xlsx`
-- **Diary File**: `attached_assets/diary_1763476206890.xlsx` with Datetime and Action columns
+- **Data File**: `attached_assets/73 Oldfield Road - Full Data_1763474740403.xlsx` (times adjusted -90 minutes)
+- **Diary File**: `attached_assets/diary_1763478604977.xlsx` with Datetime and Action columns (9 entries)
 
 ## Annotation System
 
