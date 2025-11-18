@@ -410,12 +410,38 @@ try:
                     )
                 )
                 
-                # Format datetime for display
+                # Wrap text to prevent horizontal overflow
+                def wrap_text(text, max_chars=15):
+                    """Wrap text to multiple lines at word boundaries"""
+                    words = text.split()
+                    lines = []
+                    current_line = []
+                    current_length = 0
+                    
+                    for word in words:
+                        word_length = len(word)
+                        if current_length + word_length + len(current_line) <= max_chars:
+                            current_line.append(word)
+                            current_length += word_length
+                        else:
+                            if current_line:
+                                lines.append(' '.join(current_line))
+                            current_line = [word]
+                            current_length = word_length
+                    
+                    if current_line:
+                        lines.append(' '.join(current_line))
+                    
+                    return '<br>'.join(lines)
+                
+                # Format datetime for display with wrapped text
                 if 'datetime' in ann:
+                    wrapped_action = wrap_text(ann['text'], max_chars=15)
                     datetime_str = ann['datetime'].strftime('%d %b %H:%M')
-                    label_text = f"<b>{ann['text']}</b><br><span style='font-size:9pt'>{datetime_str}</span>"
+                    label_text = f"<b>{wrapped_action}</b><br><span style='font-size:9pt'>{datetime_str}</span>"
                 else:
-                    label_text = f"<b>{ann['text']}</b>"
+                    wrapped_action = wrap_text(ann['text'], max_chars=15)
+                    label_text = f"<b>{wrapped_action}</b>"
                 
                 # Add text annotation above the chart
                 chart_annotations.append(
@@ -434,7 +460,8 @@ try:
                         bordercolor='#666666',
                         borderwidth=1,
                         borderpad=4,
-                        xanchor='center'
+                        xanchor='center',
+                        align='center'
                     )
                 )
         
