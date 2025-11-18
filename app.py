@@ -415,7 +415,7 @@ try:
         if date_col:
             layout_config['xaxis'] = {
                 'title': x_title,
-                'tickformat': '%Y-%m-%d<br>%H:%M',
+                'tickformat': '%d %b<br>%H:%M',
                 'showgrid': True,
                 'gridcolor': '#cccccc',
                 'gridwidth': 1,
