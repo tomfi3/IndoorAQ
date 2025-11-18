@@ -368,7 +368,7 @@ try:
             # Format datetime for display
             if 'datetime' in ann:
                 datetime_str = ann['datetime'].strftime('%d %b %H:%M')
-                label_text = f"<b>{ann['text']}</b><br><sub>{datetime_str}</sub>"
+                label_text = f"<b>{ann['text']}</b><br><span style='font-size:9pt'>{datetime_str}</span>"
             else:
                 label_text = f"<b>{ann['text']}</b>"
             
@@ -382,7 +382,7 @@ try:
                     text=label_text,
                     showarrow=False,
                     font=dict(
-                        size=10,
+                        size=11,
                         color='#1a1a1a'
                     ),
                     bgcolor='rgba(255, 255, 255, 0.9)',
@@ -416,8 +416,9 @@ try:
             layout_config['xaxis'] = {
                 'title': x_title,
                 'tickformat': '%d %b<br>%H:%M',
+                'tickfont': {'color': '#333333'},
                 'showgrid': True,
-                'gridcolor': '#cccccc',
+                'gridcolor': '#999999',
                 'gridwidth': 1,
                 'dtick': 86400000,  # Major ticks every 24 hours (midnight)
                 'minor': {
@@ -435,15 +436,22 @@ try:
             left_title = ', '.join(left_params) if left_params else "Left Y-axis"
             right_title = ', '.join(right_params) if right_params else "Right Y-axis"
             
-            layout_config['yaxis'] = {'title': left_title}
+            layout_config['yaxis'] = {
+                'title': left_title,
+                'tickfont': {'color': '#333333'}
+            }
             layout_config['yaxis2'] = {
                 'title': right_title,
                 'overlaying': 'y',
-                'side': 'right'
+                'side': 'right',
+                'tickfont': {'color': '#333333'}
             }
         else:
             # Single axis - show all parameters
-            layout_config['yaxis_title'] = ', '.join(display_param_names)
+            layout_config['yaxis'] = {
+                'title': ', '.join(display_param_names),
+                'tickfont': {'color': '#333333'}
+            }
         
         fig.update_layout(**layout_config)
         
