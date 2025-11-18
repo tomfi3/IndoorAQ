@@ -367,10 +367,10 @@ try:
             
             # Format datetime for display
             if 'datetime' in ann:
-                datetime_str = ann['datetime'].strftime('%Y-%m-%d %H:%M')
-                label_text = f"{ann['text']}<br><sub>{datetime_str}</sub>"
+                datetime_str = ann['datetime'].strftime('%d %b %H:%M')
+                label_text = f"<b>{ann['text']}</b><br><sub>{datetime_str}</sub>"
             else:
-                label_text = ann['text']
+                label_text = f"<b>{ann['text']}</b>"
             
             # Add text annotation above the chart
             chart_annotations.append(
@@ -383,7 +383,7 @@ try:
                     showarrow=False,
                     font=dict(
                         size=10,
-                        color='#333333'
+                        color='#1a1a1a'
                     ),
                     bgcolor='rgba(255, 255, 255, 0.9)',
                     bordercolor='#666666',
@@ -405,12 +405,30 @@ try:
         
         layout_config = {
             'title': f"{chart_type} - {', '.join(display_param_names)}",
-            'xaxis_title': x_title,
             'hovermode': 'x unified',
             'annotations': chart_annotations,
             'shapes': annotation_shapes,
             'height': 600
         }
+        
+        # Configure x-axis with time formatting and grid lines
+        if date_col:
+            layout_config['xaxis'] = {
+                'title': x_title,
+                'tickformat': '%Y-%m-%d<br>%H:%M',
+                'showgrid': True,
+                'gridcolor': '#cccccc',
+                'gridwidth': 1,
+                'dtick': 86400000,  # Major ticks every 24 hours (midnight)
+                'minor': {
+                    'dtick': 21600000,  # Minor ticks every 6 hours
+                    'showgrid': True,
+                    'gridcolor': '#e8e8e8',
+                    'gridwidth': 0.5
+                }
+            }
+        else:
+            layout_config['xaxis_title'] = x_title
         
         if has_right_axis:
             # Create y-axis titles with parameter names and units
