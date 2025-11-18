@@ -515,11 +515,11 @@ try:
             while current <= max_time:
                 tickvals.append(current)
                 if current.hour == 0:
-                    # Midnight: show full date and time
-                    ticktext.append(current.strftime('%d %b<br>%H:%M'))
+                    # Midnight: show full date with arrow and time
+                    ticktext.append(current.strftime('%d %b →<br>%H:%M'))
                 else:
-                    # Noon or other times: show just the time
-                    ticktext.append(current.strftime('%H:%M'))
+                    # Noon or other times: show time on second line to align with midnight
+                    ticktext.append('<br>' + current.strftime('%H:%M'))
                 current += timedelta(hours=12)
             
             layout_config['xaxis'] = {
@@ -530,9 +530,9 @@ try:
                 'showgrid': True,
                 'gridcolor': '#999999',
                 'gridwidth': 1,
-                'dtick': 43200000,  # Major ticks every 12 hours (for gridlines)
+                'dtick': 86400000,  # Major ticks every 24 hours (for gridlines at midnight)
                 'minor': {
-                    'dtick': 21600000,  # Minor ticks every 6 hours
+                    'dtick': 43200000,  # Minor ticks every 12 hours (lighter gridlines at noon)
                     'showgrid': True,
                     'gridcolor': '#e8e8e8',
                     'gridwidth': 0.5
