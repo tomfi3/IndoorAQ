@@ -358,12 +358,19 @@ try:
                     xref='x',
                     yref='paper',
                     line=dict(
-                        color='red',
-                        width=2,
+                        color='#666666',
+                        width=1,
                         dash='dot'
                     )
                 )
             )
+            
+            # Format datetime for display
+            if 'datetime' in ann:
+                datetime_str = ann['datetime'].strftime('%Y-%m-%d %H:%M')
+                label_text = f"{ann['text']}<br><sub>{datetime_str}</sub>"
+            else:
+                label_text = ann['text']
             
             # Add text annotation above the chart
             chart_annotations.append(
@@ -372,14 +379,14 @@ try:
                     y=y_position,
                     xref='x',
                     yref='paper',
-                    text=ann['text'],
+                    text=label_text,
                     showarrow=False,
                     font=dict(
                         size=10,
-                        color='red'
+                        color='#333333'
                     ),
-                    bgcolor='rgba(255, 255, 255, 0.8)',
-                    bordercolor='red',
+                    bgcolor='rgba(255, 255, 255, 0.9)',
+                    bordercolor='#666666',
                     borderwidth=1,
                     borderpad=4,
                     xanchor='center'
