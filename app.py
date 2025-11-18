@@ -260,46 +260,74 @@ if uploaded_file is not None:
                 
                 fig.add_trace(trace)
             
-            # Add annotations to the chart
+            # Add annotations as vertical lines with labels above the chart
             chart_annotations = []
+            annotation_shapes = []
+            
+            # Sort annotations by x position to space them vertically
+            visible_annotations = []
             for ann in st.session_state.annotations:
                 if ann['type'] == 'datetime' and date_col:
                     ann_dt = pd.Timestamp(ann['datetime'])
                     if start_date <= ann_dt.date() <= end_date:
-                        chart_annotations.append(
-                            dict(
-                                x=ann_dt,
-                                y=0,
-                                xref='x',
-                                yref='paper',
-                                text=ann['text'],
-                                showarrow=True,
-                                arrowhead=2,
-                                arrowsize=1,
-                                arrowwidth=2,
-                                arrowcolor='red',
-                                ax=0,
-                                ay=-40
-                            )
-                        )
+                        visible_annotations.append({
+                            'x': ann_dt,
+                            'text': ann['text'],
+                            'datetime': ann_dt
+                        })
                 elif ann['type'] == 'index' and not date_col:
                     if ann['index'] in filtered_df.index:
-                        chart_annotations.append(
-                            dict(
-                                x=ann['index'],
-                                y=0,
-                                xref='x',
-                                yref='paper',
-                                text=ann['text'],
-                                showarrow=True,
-                                arrowhead=2,
-                                arrowsize=1,
-                                arrowwidth=2,
-                                arrowcolor='red',
-                                ax=0,
-                                ay=-40
-                            )
+                        visible_annotations.append({
+                            'x': ann['index'],
+                            'text': ann['text'],
+                            'index': ann['index']
+                        })
+            
+            # Sort by x position
+            visible_annotations.sort(key=lambda a: a['x'])
+            
+            # Stagger annotation heights to avoid overlap
+            for i, ann in enumerate(visible_annotations):
+                y_position = 1.02 + (i % 3) * 0.08
+                
+                # Add vertical line from top to bottom of plot
+                annotation_shapes.append(
+                    dict(
+                        type='line',
+                        x0=ann['x'],
+                        x1=ann['x'],
+                        y0=0,
+                        y1=1,
+                        xref='x',
+                        yref='paper',
+                        line=dict(
+                            color='red',
+                            width=2,
+                            dash='dot'
                         )
+                    )
+                )
+                
+                # Add text annotation above the chart
+                chart_annotations.append(
+                    dict(
+                        x=ann['x'],
+                        y=y_position,
+                        xref='x',
+                        yref='paper',
+                        text=ann['text'],
+                        showarrow=False,
+                        font=dict(
+                            size=10,
+                            color='red'
+                        ),
+                        bgcolor='rgba(255, 255, 255, 0.8)',
+                        bordercolor='red',
+                        borderwidth=1,
+                        borderpad=4,
+                        xanchor='center'
+                    )
+                )
             
             # Configure layout with dual y-axes if needed
             has_right_axis = any(axis == "y2" for axis in y_axis_assignment.values())
@@ -309,6 +337,7 @@ if uploaded_file is not None:
                 xaxis_title=x_title,
                 hovermode='x unified',
                 annotations=chart_annotations,
+                shapes=annotation_shapes,
                 height=600
             )
             
