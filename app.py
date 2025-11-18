@@ -40,8 +40,8 @@ try:
         
         if 'pidppm' in col_lower:
             return 'VOC (ppm)'
-        elif 'co2' in col_lower:
-            return 'CO2 (ppm)'
+        elif 'co2' in col_lower or 'carbon' in col_lower:
+            return 'Carbon Dioxide (ppm)'
         elif 'dust' in col_lower or 'pm' in col_lower:
             return 'Dust (μg/m³)'
         elif 'humidity' in col_lower or col_lower in ['rh', 'hum']:
