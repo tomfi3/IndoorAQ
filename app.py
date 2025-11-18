@@ -399,9 +399,15 @@ try:
         # Create title with display names
         display_param_names = [param_display_map[p] for p in selected_params]
         
-        # Group parameters by axis
-        left_params = [param_display_map[p] for p in selected_params if y_axis_assignment[p] == "y1"]
-        right_params = [param_display_map[p] for p in selected_params if y_axis_assignment[p] == "y2"]
+        # Create mapping of parameters to colors
+        param_colors = {param: accessible_colors[idx % len(accessible_colors)] 
+                       for idx, param in enumerate(selected_params)}
+        
+        # Group parameters by axis with colors
+        left_params_with_colors = [(param_display_map[p], param_colors[p]) 
+                                   for p in selected_params if y_axis_assignment[p] == "y1"]
+        right_params_with_colors = [(param_display_map[p], param_colors[p]) 
+                                    for p in selected_params if y_axis_assignment[p] == "y2"]
         
         layout_config = {
             'title': f"{chart_type} - {', '.join(display_param_names)}",
@@ -432,24 +438,31 @@ try:
             layout_config['xaxis_title'] = x_title
         
         if has_right_axis:
-            # Create y-axis titles with parameter names and units
-            left_title = ', '.join(left_params) if left_params else "Left Y-axis"
-            right_title = ', '.join(right_params) if right_params else "Right Y-axis"
+            # Create y-axis titles with colored squares
+            left_title_parts = [f"<span style='color:{color}'>■</span> {name}" 
+                               for name, color in left_params_with_colors]
+            right_title_parts = [f"<span style='color:{color}'>■</span> {name}" 
+                                for name, color in right_params_with_colors]
+            
+            left_title = ', '.join(left_title_parts) if left_title_parts else "Left Y-axis"
+            right_title = ', '.join(right_title_parts) if right_title_parts else "Right Y-axis"
             
             layout_config['yaxis'] = {
-                'title': left_title,
+                'title': {'text': left_title},
                 'tickfont': {'color': '#333333'}
             }
             layout_config['yaxis2'] = {
-                'title': right_title,
+                'title': {'text': right_title},
                 'overlaying': 'y',
                 'side': 'right',
                 'tickfont': {'color': '#333333'}
             }
         else:
-            # Single axis - show all parameters
+            # Single axis - show all parameters with colored squares
+            title_parts = [f"<span style='color:{param_colors[p]}'>■</span> {param_display_map[p]}" 
+                          for p in selected_params]
             layout_config['yaxis'] = {
-                'title': ', '.join(display_param_names),
+                'title': {'text': ', '.join(title_parts)},
                 'tickfont': {'color': '#333333'}
             }
         
