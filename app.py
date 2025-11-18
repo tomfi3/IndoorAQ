@@ -498,14 +498,39 @@ try:
         
         # Configure x-axis with time formatting and grid lines
         if date_col:
+            # Generate custom tick values and labels
+            # Show full date at midnight, just time at noon
+            min_time = filtered_df[date_col].min()
+            max_time = filtered_df[date_col].max()
+            
+            # Create tick values every 12 hours
+            from datetime import datetime, timedelta
+            current = min_time.replace(hour=0, minute=0, second=0, microsecond=0)
+            if current < min_time:
+                current += timedelta(hours=12)
+            
+            tickvals = []
+            ticktext = []
+            
+            while current <= max_time:
+                tickvals.append(current)
+                if current.hour == 0:
+                    # Midnight: show full date and time
+                    ticktext.append(current.strftime('%d %b<br>%H:%M'))
+                else:
+                    # Noon or other times: show just the time
+                    ticktext.append(current.strftime('%H:%M'))
+                current += timedelta(hours=12)
+            
             layout_config['xaxis'] = {
                 'title': x_title,
-                'tickformat': '%d %b<br>%H:%M',
+                'tickvals': tickvals,
+                'ticktext': ticktext,
                 'tickfont': {'color': '#333333'},
                 'showgrid': True,
                 'gridcolor': '#999999',
                 'gridwidth': 1,
-                'dtick': 43200000,  # Major ticks every 12 hours (midnight and noon)
+                'dtick': 43200000,  # Major ticks every 12 hours (for gridlines)
                 'minor': {
                     'dtick': 21600000,  # Minor ticks every 6 hours
                     'showgrid': True,
