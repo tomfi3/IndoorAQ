@@ -343,55 +343,100 @@ try:
         # Sort by x position
         visible_annotations.sort(key=lambda a: a['x'])
         
-        # Stagger annotation heights to avoid overlap
-        for i, ann in enumerate(visible_annotations):
-            y_position = 1.02 + (i % 3) * 0.08
+        # Intelligent row assignment to avoid overlap
+        # Calculate approximate width of annotations based on text length
+        if date_col and len(visible_annotations) > 0:
+            # Get the x-axis range to calculate relative spacing
+            x_range = (filtered_df[date_col].max() - filtered_df[date_col].min()).total_seconds()
+            # Estimate annotation width as percentage of visible range (roughly 5% of range or 2 hours, whichever is larger)
+            min_spacing_seconds = max(x_range * 0.05, 7200)  # 2 hours minimum
+        else:
+            min_spacing_seconds = None
+        
+        # Assign each annotation to a row
+        rows = []  # Each row contains list of (x_position, annotation) tuples
+        
+        for ann in visible_annotations:
+            # Try to find a row where this annotation fits
+            placed = False
+            for row in rows:
+                # Check if annotation overlaps with any annotation in this row
+                overlaps = False
+                if date_col and min_spacing_seconds:
+                    for existing_x, _ in row:
+                        time_diff = abs((ann['x'] - existing_x).total_seconds())
+                        if time_diff < min_spacing_seconds:
+                            overlaps = True
+                            break
+                else:
+                    # For non-datetime, use simple spacing
+                    for existing_x, _ in row:
+                        if abs(ann['x'] - existing_x) < 50:  # Index-based spacing
+                            overlaps = True
+                            break
+                
+                if not overlaps:
+                    row.append((ann['x'], ann))
+                    placed = True
+                    break
             
-            # Add vertical line from top to bottom of plot
-            annotation_shapes.append(
-                dict(
-                    type='line',
-                    x0=ann['x'],
-                    x1=ann['x'],
-                    y0=0,
-                    y1=1,
-                    xref='x',
-                    yref='paper',
-                    line=dict(
-                        color='#666666',
-                        width=1,
-                        dash='dot'
+            if not placed:
+                # Create new row
+                rows.append([(ann['x'], ann)])
+        
+        # Now render annotations based on their row assignment
+        row_height = 0.08  # Vertical spacing between rows
+        base_y = 1.02  # Starting position above chart
+        
+        for row_idx, row in enumerate(rows):
+            y_position = base_y + row_idx * row_height
+            
+            for x_pos, ann in row:
+                # Add vertical line from annotation down to chart
+                annotation_shapes.append(
+                    dict(
+                        type='line',
+                        x0=x_pos,
+                        x1=x_pos,
+                        y0=0,
+                        y1=y_position - 0.01,  # Stop just below the annotation
+                        xref='x',
+                        yref='paper',
+                        line=dict(
+                            color='#666666',
+                            width=1,
+                            dash='dot'
+                        )
                     )
                 )
-            )
-            
-            # Format datetime for display
-            if 'datetime' in ann:
-                datetime_str = ann['datetime'].strftime('%d %b %H:%M')
-                label_text = f"<b>{ann['text']}</b><br><span style='font-size:9pt'>{datetime_str}</span>"
-            else:
-                label_text = f"<b>{ann['text']}</b>"
-            
-            # Add text annotation above the chart
-            chart_annotations.append(
-                dict(
-                    x=ann['x'],
-                    y=y_position,
-                    xref='x',
-                    yref='paper',
-                    text=label_text,
-                    showarrow=False,
-                    font=dict(
-                        size=11,
-                        color='#1a1a1a'
-                    ),
-                    bgcolor='rgba(255, 255, 255, 0.9)',
-                    bordercolor='#666666',
-                    borderwidth=1,
-                    borderpad=4,
-                    xanchor='center'
+                
+                # Format datetime for display
+                if 'datetime' in ann:
+                    datetime_str = ann['datetime'].strftime('%d %b %H:%M')
+                    label_text = f"<b>{ann['text']}</b><br><span style='font-size:9pt'>{datetime_str}</span>"
+                else:
+                    label_text = f"<b>{ann['text']}</b>"
+                
+                # Add text annotation above the chart
+                chart_annotations.append(
+                    dict(
+                        x=x_pos,
+                        y=y_position,
+                        xref='x',
+                        yref='paper',
+                        text=label_text,
+                        showarrow=False,
+                        font=dict(
+                            size=11,
+                            color='#1a1a1a'
+                        ),
+                        bgcolor='rgba(255, 255, 255, 0.9)',
+                        bordercolor='#666666',
+                        borderwidth=1,
+                        borderpad=4,
+                        xanchor='center'
+                    )
                 )
-            )
         
         # Configure layout with dual y-axes if needed
         has_right_axis = any(axis == "y2" for axis in y_axis_assignment.values())
