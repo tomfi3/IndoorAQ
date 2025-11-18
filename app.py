@@ -222,6 +222,26 @@ try:
             r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
             return f'rgba({r}, {g}, {b}, {alpha})'
         
+        # Assign fixed accessible colors based on parameter type
+        def get_param_color(param):
+            """Assign fixed accessible colors based on parameter type"""
+            param_lower = param.lower()
+            if 'humidity' in param_lower or param_lower in ['rh', 'hum']:
+                return '#28A745'  # Green
+            elif 'temp' in param_lower:
+                return '#DC3545'  # Red
+            elif 'pidppm' in param_lower or 'voc' in param_lower:
+                return '#D4A017'  # Mustard/Gold
+            elif 'co2' in param_lower or 'carbon' in param_lower:
+                return '#003D82'  # Dark Blue
+            elif 'dust' in param_lower or 'pm' in param_lower:
+                return '#8B4513'  # Brown
+            else:
+                return '#6C757D'  # Gray for unknown parameters
+        
+        # Create mapping of parameters to colors
+        param_colors = {param: get_param_color(param) for param in selected_params}
+        
         fig = go.Figure()
         
         # Determine x-axis
@@ -234,7 +254,7 @@ try:
         
         # Add traces for each selected parameter
         for idx, param in enumerate(selected_params):
-            color = accessible_colors[idx % len(accessible_colors)]
+            color = param_colors[param]
             display_name = param_display_map[param]
             
             # For line and area charts with time data, break lines on gaps > 2 minutes
@@ -470,10 +490,6 @@ try:
         
         # Create title with display names
         display_param_names = [param_display_map[p] for p in selected_params]
-        
-        # Create mapping of parameters to colors
-        param_colors = {param: accessible_colors[idx % len(accessible_colors)] 
-                       for idx, param in enumerate(selected_params)}
         
         # Group parameters by axis with colors
         left_params_with_colors = [(param_display_map[p], param_colors[p]) 
