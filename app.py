@@ -532,11 +532,11 @@ try:
             while current <= max_time:
                 tickvals.append(current)
                 if current.hour == 0:
-                    # Midnight: show full date with arrow and time
-                    ticktext.append(current.strftime('%d %b →<br>%H:%M'))
+                    # Midnight: show day name, date with arrow, and time
+                    ticktext.append(current.strftime('%a<br>%d %b →<br>%H:%M'))
                 else:
-                    # Noon or other times: show time on second line to align with midnight
-                    ticktext.append('<br>' + current.strftime('%H:%M'))
+                    # Noon or other times: show time on third line to align with midnight
+                    ticktext.append('<br><br>' + current.strftime('%H:%M'))
                 current += timedelta(hours=12)
             
             layout_config['xaxis'] = {
