@@ -486,7 +486,14 @@ try:
             'hovermode': 'x unified',
             'annotations': chart_annotations,
             'shapes': annotation_shapes,
-            'height': 600
+            'height': 600,
+            'legend': {
+                'orientation': 'h',
+                'yanchor': 'top',
+                'y': -0.15,
+                'xanchor': 'center',
+                'x': 0.5
+            }
         }
         
         # Configure x-axis with time formatting and grid lines
@@ -498,7 +505,7 @@ try:
                 'showgrid': True,
                 'gridcolor': '#999999',
                 'gridwidth': 1,
-                'dtick': 86400000,  # Major ticks every 24 hours (midnight)
+                'dtick': 43200000,  # Major ticks every 12 hours (midnight and noon)
                 'minor': {
                     'dtick': 21600000,  # Minor ticks every 6 hours
                     'showgrid': True,
