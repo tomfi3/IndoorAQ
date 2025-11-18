@@ -481,12 +481,29 @@ try:
         right_params_with_colors = [(param_display_map[p], param_colors[p]) 
                                     for p in selected_params if y_axis_assignment[p] == "y2"]
         
+        # Create dynamic title with date range
+        if date_col:
+            min_date = filtered_df[date_col].min()
+            max_date = filtered_df[date_col].max()
+            date_range = f"From {min_date.strftime('%d %b %Y')} To {max_date.strftime('%d %b %Y')}"
+            chart_title = f"Chart of Indoor Air Quality Monitoring at 73 Oldfield Road {date_range} - {', '.join(display_param_names)}"
+        else:
+            chart_title = f"{chart_type} - {', '.join(display_param_names)}"
+        
         layout_config = {
-            'title': f"{chart_type} - {', '.join(display_param_names)}",
+            'title': {
+                'text': chart_title,
+                'y': 0.98,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'pad': {'b': 30}
+            },
             'hovermode': 'x unified',
             'annotations': chart_annotations,
             'shapes': annotation_shapes,
             'height': 600,
+            'margin': {'t': 100},
             'legend': {
                 'orientation': 'h',
                 'yanchor': 'top',
