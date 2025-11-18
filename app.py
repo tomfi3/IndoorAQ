@@ -386,20 +386,20 @@ try:
         
         # Now render annotations based on their row assignment
         row_height = 0.08  # Vertical spacing between rows
-        base_y = -0.20  # Starting position below chart
+        base_y = 1.02  # Starting position above chart
         
         for row_idx, row in enumerate(rows):
-            y_position = base_y - row_idx * row_height
+            y_position = base_y + row_idx * row_height
             
             for x_pos, ann in row:
-                # Add vertical line from annotation up to chart
+                # Add vertical line from annotation down to chart
                 annotation_shapes.append(
                     dict(
                         type='line',
                         x0=x_pos,
                         x1=x_pos,
-                        y0=y_position + 0.01,  # Start just above the annotation
-                        y1=0,  # Go up to the bottom of the chart
+                        y0=0,
+                        y1=y_position - 0.01,  # Stop just below the annotation
                         xref='x',
                         yref='paper',
                         line=dict(
@@ -489,8 +489,8 @@ try:
             'height': 600,
             'legend': {
                 'orientation': 'h',
-                'yanchor': 'bottom',
-                'y': 1.02,
+                'yanchor': 'top',
+                'y': -0.15,
                 'xanchor': 'center',
                 'x': 0.5
             }
