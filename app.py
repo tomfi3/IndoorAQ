@@ -385,7 +385,7 @@ try:
                 rows.append([(ann['x'], ann)])
         
         # Now render annotations based on their row assignment
-        row_height = 0.08  # Vertical spacing between rows
+        row_height = 0.12  # Vertical spacing between rows
         base_y = 1.02  # Starting position above chart
         
         for row_idx, row in enumerate(rows):
