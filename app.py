@@ -639,7 +639,7 @@ try:
         if len(selected_params) > 1:
             st.subheader("Parameter Correlations")
             
-            # Calculate correlation matrix
+            # Calculate correlation matrix for all selected parameters
             corr_matrix = filtered_df[selected_params].corr()
             
             # Create correlation heatmap
@@ -647,16 +647,18 @@ try:
                 z=corr_matrix.values,
                 x=[param_display_map[p] for p in corr_matrix.columns],
                 y=[param_display_map[p] for p in corr_matrix.index],
-                colorscale='RdBu',
+                colorscale='RdBu_r',  # Reversed: Blue for negative, Red for positive
                 zmid=0,
                 text=corr_matrix.values,
                 texttemplate='%{text:.2f}',
                 textfont={"size": 12},
-                colorbar=dict(title="Correlation")
+                colorbar=dict(title="Correlation"),
+                zmin=-1,
+                zmax=1
             ))
             
             fig_corr.update_layout(
-                title="Correlation Matrix",
+                title="Correlation Matrix (includes all selected parameters)",
                 xaxis_title="",
                 yaxis_title="",
                 height=400
@@ -687,12 +689,12 @@ try:
                 # Format column names
                 heatmap_data.columns = [col.strftime('%a %d') for col in heatmap_data.columns]
                 
-                # Create heatmap
+                # Create heatmap with blue-to-red color scale
                 fig_heat = go.Figure(data=go.Heatmap(
                     z=heatmap_data.values,
                     x=heatmap_data.columns,
                     y=heatmap_data.index,
-                    colorscale='Viridis',
+                    colorscale='RdBu_r',  # Blue for low values, Red for high values
                     colorbar=dict(title=display_name),
                     hoverongaps=False
                 ))
