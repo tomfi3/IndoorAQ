@@ -61,14 +61,18 @@ for param in numeric_cols:
     # Reindex to include all 96 time slots
     avg_by_slot = avg_by_slot.reindex(time_slots)
     
-    # Convert to percentage of maximum value
+    # Convert to percentage between minimum and maximum value
+    min_val = avg_by_slot.min()
     max_val = avg_by_slot.max()
-    if max_val > 0:
-        percent_values = (avg_by_slot / max_val) * 100
-        print(f"    Max value: {max_val:.2f}, converted to 0-100% scale")
+    
+    if max_val > min_val:
+        # Normalize to 0-100% between min and max
+        percent_values = ((avg_by_slot - min_val) / (max_val - min_val)) * 100
+        print(f"    Min: {min_val:.2f}, Max: {max_val:.2f}, normalized to 0-100% scale")
     else:
-        percent_values = avg_by_slot * 0  # All zeros if max is 0
-        print(f"    Max value is 0, using zeros")
+        # If min equals max, set all to 50%
+        percent_values = avg_by_slot * 0 + 50
+        print(f"    Min equals Max ({min_val:.2f}), using 50%")
     
     # Add to results dataframe
     results[param] = percent_values.values

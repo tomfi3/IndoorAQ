@@ -737,13 +737,13 @@ try:
                     
                     # Only display if we have data
                     if typical_day_data_percent and len(typical_day_data_percent) > 0:
-                        # Create combined heatmap with all parameters (colored by % of max)
+                        # Create combined heatmap with all parameters (grey to brown color scale)
                         fig_typical = go.Figure(data=go.Heatmap(
                             z=typical_day_data_percent,
                             x=time_slot_labels,
                             y=param_names,
-                            colorscale='RdBu_r',  # Blue for low %, red for high %
-                            colorbar=dict(title="% of Max"),
+                            colorscale=[[0, '#E8E8E8'], [0.5, '#A89968'], [1, '#5C4033']],  # Pale grey to brown
+                            colorbar=dict(title="% of Range"),
                             hoverongaps=False,
                             hovertemplate='%{y}<br>Time: %{x}<br>Value: %{z:.1f}%<extra></extra>',
                             zmin=0,
@@ -768,7 +768,7 @@ try:
                         
                         st.plotly_chart(fig_typical, use_container_width=True)
                         
-                        st.caption("This heatmap shows typical daily patterns for each parameter. Colors represent percentage of maximum value (0-100%) for that parameter across the typical day.")
+                        st.caption("This heatmap shows typical daily patterns for each parameter. Colors represent percentage (0-100%) between minimum and maximum values for that parameter across the typical day.")
                     else:
                         st.info("No matching parameters found in typical day data.")
                         
