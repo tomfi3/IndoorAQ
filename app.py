@@ -802,11 +802,13 @@ try:
                         ))
                         
                         # Update layout to show only hourly labels
-                        hourly_ticks = [i for i in range(0, 96, 4)]  # Every 4th slot = hourly
+                        # Calculate hourly ticks based on actual number of time slots
+                        num_slots = len(time_slot_labels)
+                        hourly_ticks = [i for i in range(0, num_slots, 4)]  # Every 4th slot = hourly
                         hourly_labels = [time_slot_labels[i] for i in hourly_ticks]
                         
                         fig_typical.update_layout(
-                            title="Typical Day - Average Pattern Across All Data",
+                            title="Typical Day - Average Pattern Across All Data (06:00-23:45)",
                             xaxis_title="Time of Day",
                             yaxis_title="Parameter",
                             height=max(200, len(numeric_cols) * 60),  # Scale height with number of parameters
