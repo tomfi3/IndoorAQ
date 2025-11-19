@@ -51,11 +51,6 @@ try:
         else:
             return col_name
     
-    # Display data preview
-    with st.expander("📋 Data Preview", expanded=False):
-        st.dataframe(df.head(20), use_container_width=True)
-        st.write(f"Total rows: {len(df)} | Total columns: {len(df.columns)}")
-    
     # Sidebar controls
     with st.sidebar:
         st.header("⚙️ Chart Configuration")
@@ -115,68 +110,58 @@ try:
             )
             y_axis_assignment[param] = "y1" if axis == "Left Y-axis" else "y2"
     
-    # Date filtering
+    # Date filtering with day buttons
     if date_col:
-        st.header("📅 Date Filtering")
+        st.header("📅 Select Days")
         
-        col1, col2 = st.columns(2)
+        # Get unique dates from the data
+        unique_dates = sorted(df[date_col].dt.date.unique())
         
-        min_date = df[date_col].min().date()
-        max_date = df[date_col].max().date()
+        # Initialize session state for selected days (all selected by default)
+        if 'selected_days' not in st.session_state:
+            st.session_state.selected_days = set(unique_dates)
         
-        with col1:
-            start_date = st.date_input(
-                "Start Date",
-                value=min_date,
-                min_value=min_date,
-                max_value=max_date
-            )
+        # Create day buttons in a row
+        st.write("Click to toggle days:")
         
-        with col2:
-            end_date = st.date_input(
-                "End Date",
-                value=max_date,
-                min_value=min_date,
-                max_value=max_date
-            )
+        # Use custom CSS to make checkboxes look like buttons
+        st.markdown("""
+        <style>
+        div[data-testid="stHorizontalBlock"] {
+            gap: 0.5rem;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         
-        # Quick filters
-        st.write("Quick Filters:")
-        col1, col2, col3, col4 = st.columns(4)
+        # Create columns for each day
+        cols = st.columns(len(unique_dates))
         
-        with col1:
-            if st.button("Last 7 Days"):
-                start_date = max_date - timedelta(days=7)
-                end_date = max_date
-                st.rerun()
+        for idx, day in enumerate(unique_dates):
+            with cols[idx]:
+                # Create checkbox styled as button
+                day_str = day.strftime('%a %d')
+                is_selected = day in st.session_state.selected_days
+                
+                # Use checkbox with custom styling
+                checked = st.checkbox(
+                    day_str,
+                    value=is_selected,
+                    key=f"day_{day}"
+                )
+                
+                # Update session state
+                if checked and day not in st.session_state.selected_days:
+                    st.session_state.selected_days.add(day)
+                elif not checked and day in st.session_state.selected_days:
+                    st.session_state.selected_days.remove(day)
         
-        with col2:
-            if st.button("Last 30 Days"):
-                start_date = max_date - timedelta(days=30)
-                end_date = max_date
-                st.rerun()
-        
-        with col3:
-            if st.button("Last 90 Days"):
-                start_date = max_date - timedelta(days=90)
-                end_date = max_date
-                st.rerun()
-        
-        with col4:
-            if st.button("All Data"):
-                start_date = min_date
-                end_date = max_date
-                st.rerun()
-        
-        # Filter dataframe
-        filtered_df = df[
-            (df[date_col].dt.date >= start_date) & 
-            (df[date_col].dt.date <= end_date)
-        ]
+        # Filter dataframe based on selected days
+        if st.session_state.selected_days:
+            filtered_df = df[df[date_col].dt.date.isin(st.session_state.selected_days)]
+        else:
+            filtered_df = pd.DataFrame()  # Empty if no days selected
     else:
         filtered_df = df
-        start_date = None
-        end_date = None
     
     # Load annotations from admin-editable file
     ANNOTATIONS_FILE = "attached_assets/diary_1763478604977.xlsx"
