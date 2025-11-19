@@ -601,14 +601,14 @@ try:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Data Summary Section
+        # Data Summary Section (always shows ALL parameters)
         st.header("📊 Data Summary")
         
         # Overall Statistics
         st.subheader("Overall Statistics")
-        stats_cols = st.columns(len(selected_params))
+        stats_cols = st.columns(len(numeric_cols))
         
-        for idx, param in enumerate(selected_params):
+        for idx, param in enumerate(numeric_cols):
             with stats_cols[idx]:
                 display_name = param_display_map[param]
                 avg_val = filtered_df[param].mean()
@@ -630,7 +630,7 @@ try:
             daily_stats = filtered_df.copy()
             daily_stats['Date'] = daily_stats[date_col].dt.date
             
-            for param in selected_params:
+            for param in numeric_cols:
                 st.write(f"**{param_display_map[param]}**")
                 
                 daily_summary = daily_stats.groupby('Date')[param].agg(['min', 'max', 'mean']).reset_index()
@@ -643,12 +643,12 @@ try:
                     hide_index=True
                 )
         
-        # Correlation Matrix
-        if len(selected_params) > 1:
+        # Correlation Matrix (always shows ALL parameters)
+        if len(numeric_cols) > 1:
             st.subheader("Parameter Correlations")
             
-            # Calculate correlation matrix for all selected parameters
-            corr_matrix = filtered_df[selected_params].corr()
+            # Calculate correlation matrix for all parameters
+            corr_matrix = filtered_df[numeric_cols].corr()
             
             # Create correlation heatmap
             fig_corr = go.Figure(data=go.Heatmap(
@@ -666,7 +666,7 @@ try:
             ))
             
             fig_corr.update_layout(
-                title="Correlation Matrix (includes all selected parameters)",
+                title="Correlation Matrix (all parameters)",
                 xaxis_title="",
                 yaxis_title="",
                 height=400
@@ -674,11 +674,11 @@ try:
             
             st.plotly_chart(fig_corr, use_container_width=True)
         
-        # Time-based Heatmaps
+        # Time-based Heatmaps (always shows ALL parameters)
         if date_col:
             st.subheader("Time-based Heatmaps")
             
-            for param in selected_params:
+            for param in numeric_cols:
                 display_name = param_display_map[param]
                 
                 # Create hourly data
@@ -716,7 +716,7 @@ try:
                 
                 st.plotly_chart(fig_heat, use_container_width=True)
             
-            # Typical Day Pattern - 15-minute intervals averaged across all days
+            # Typical Day Pattern - 15-minute intervals averaged across all days (always shows ALL parameters)
             st.subheader("Typical Day Pattern (15-minute intervals)")
             
             if typical_day_df is not None:
@@ -724,26 +724,30 @@ try:
                     # Extract time labels from the first column
                     time_slot_labels = typical_day_df['Time'].tolist()
                     
-                    # Prepare data for selected parameters only
-                    typical_day_data = []
+                    # Prepare data for ALL parameters (data is already in percentage format)
+                    typical_day_data_percent = []
                     param_names = []
                     
-                    for param in selected_params:
+                    for param in numeric_cols:
                         if param in typical_day_df.columns:
-                            typical_day_data.append(typical_day_df[param].values)
+                            # Data is already stored as percentage of max
+                            percent_values = typical_day_df[param].values
+                            typical_day_data_percent.append(percent_values)
                             param_names.append(param_display_map[param])
                     
                     # Only display if we have data
-                    if typical_day_data and len(typical_day_data) > 0:
-                        # Create combined heatmap with all parameters
+                    if typical_day_data_percent and len(typical_day_data_percent) > 0:
+                        # Create combined heatmap with all parameters (colored by % of max)
                         fig_typical = go.Figure(data=go.Heatmap(
-                            z=typical_day_data,
+                            z=typical_day_data_percent,
                             x=time_slot_labels,
                             y=param_names,
-                            colorscale='RdBu_r',  # Blue for low, red for high
-                            colorbar=dict(title="Value"),
+                            colorscale='RdBu_r',  # Blue for low %, red for high %
+                            colorbar=dict(title="% of Max"),
                             hoverongaps=False,
-                            hovertemplate='%{y}<br>Time: %{x}<br>Value: %{z:.2f}<extra></extra>'
+                            hovertemplate='%{y}<br>Time: %{x}<br>Value: %{z:.1f}%<extra></extra>',
+                            zmin=0,
+                            zmax=100
                         ))
                         
                         # Update layout to show only hourly labels
@@ -754,7 +758,7 @@ try:
                             title="Typical Day - Average Pattern Across All Data",
                             xaxis_title="Time of Day",
                             yaxis_title="Parameter",
-                            height=max(200, len(selected_params) * 60),  # Scale height with number of parameters
+                            height=max(200, len(numeric_cols) * 60),  # Scale height with number of parameters
                             xaxis=dict(
                                 tickmode='array',
                                 tickvals=hourly_ticks,
@@ -764,7 +768,7 @@ try:
                         
                         st.plotly_chart(fig_typical, use_container_width=True)
                         
-                        st.caption("This heatmap shows the average value for each 15-minute period across all available data, revealing typical daily patterns for each parameter.")
+                        st.caption("This heatmap shows typical daily patterns for each parameter. Colors represent percentage of maximum value (0-100%) for that parameter across the typical day.")
                     else:
                         st.info("No matching parameters found in typical day data.")
                         

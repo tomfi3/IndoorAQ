@@ -1,7 +1,7 @@
 """
-Preprocessing script to calculate and save typical day averages
+Preprocessing script to calculate and save typical day averages as percentages
 This calculates the average value for each 15-minute period of the day
-across all available data, for each parameter.
+across all available data, then converts to percentage of maximum for each parameter.
 """
 
 import pandas as pd
@@ -45,7 +45,7 @@ print("Calculating typical day averages...")
 # Create a dataframe to store results
 results = pd.DataFrame({'Time': time_slot_labels})
 
-# Calculate average for each parameter
+# Calculate average for each parameter and convert to percentage
 for param in numeric_cols:
     print(f"  Processing {param}...")
     
@@ -61,13 +61,23 @@ for param in numeric_cols:
     # Reindex to include all 96 time slots
     avg_by_slot = avg_by_slot.reindex(time_slots)
     
+    # Convert to percentage of maximum value
+    max_val = avg_by_slot.max()
+    if max_val > 0:
+        percent_values = (avg_by_slot / max_val) * 100
+        print(f"    Max value: {max_val:.2f}, converted to 0-100% scale")
+    else:
+        percent_values = avg_by_slot * 0  # All zeros if max is 0
+        print(f"    Max value is 0, using zeros")
+    
     # Add to results dataframe
-    results[param] = avg_by_slot.values
+    results[param] = percent_values.values
 
 # Save to Excel
 print(f"Saving results to {OUTPUT_FILE}...")
 results.to_excel(OUTPUT_FILE, index=False)
 
 print("Done!")
-print(f"\nTypical day averages saved to: {OUTPUT_FILE}")
+print(f"\nTypical day averages (as % of max) saved to: {OUTPUT_FILE}")
 print(f"Shape: {results.shape} (96 time slots × {len(numeric_cols)} parameters)")
+print("All values are now percentages (0-100%) of each parameter's typical weekly maximum.")
