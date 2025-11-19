@@ -505,11 +505,11 @@ try:
             'annotations': chart_annotations,
             'shapes': annotation_shapes,
             'height': 600,
-            'margin': {'t': 100},
+            'margin': {'t': 100, 'b': 120},
             'legend': {
                 'orientation': 'h',
                 'yanchor': 'top',
-                'y': -0.15,
+                'y': -0.25,
                 'xanchor': 'center',
                 'x': 0.5
             }
@@ -592,6 +592,119 @@ try:
         fig.update_layout(**layout_config)
         
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Data Summary Section
+        st.header("📊 Data Summary")
+        
+        # Overall Statistics
+        st.subheader("Overall Statistics")
+        stats_cols = st.columns(len(selected_params))
+        
+        for idx, param in enumerate(selected_params):
+            with stats_cols[idx]:
+                display_name = param_display_map[param]
+                avg_val = filtered_df[param].mean()
+                min_val = filtered_df[param].min()
+                max_val = filtered_df[param].max()
+                
+                st.metric(
+                    label=display_name,
+                    value=f"{avg_val:.2f}",
+                    delta=None
+                )
+                st.write(f"**Range:** {min_val:.2f} - {max_val:.2f}")
+        
+        # Daily Highs and Lows
+        if date_col:
+            st.subheader("Daily Highs and Lows")
+            
+            # Create daily summary
+            daily_stats = filtered_df.copy()
+            daily_stats['Date'] = daily_stats[date_col].dt.date
+            
+            for param in selected_params:
+                st.write(f"**{param_display_map[param]}**")
+                
+                daily_summary = daily_stats.groupby('Date')[param].agg(['min', 'max', 'mean']).reset_index()
+                daily_summary.columns = ['Date', 'Low', 'High', 'Average']
+                daily_summary['Date'] = pd.to_datetime(daily_summary['Date']).dt.strftime('%a %d %b')
+                
+                st.dataframe(
+                    daily_summary,
+                    use_container_width=True,
+                    hide_index=True
+                )
+        
+        # Correlation Matrix
+        if len(selected_params) > 1:
+            st.subheader("Parameter Correlations")
+            
+            # Calculate correlation matrix
+            corr_matrix = filtered_df[selected_params].corr()
+            
+            # Create correlation heatmap
+            fig_corr = go.Figure(data=go.Heatmap(
+                z=corr_matrix.values,
+                x=[param_display_map[p] for p in corr_matrix.columns],
+                y=[param_display_map[p] for p in corr_matrix.index],
+                colorscale='RdBu',
+                zmid=0,
+                text=corr_matrix.values,
+                texttemplate='%{text:.2f}',
+                textfont={"size": 12},
+                colorbar=dict(title="Correlation")
+            ))
+            
+            fig_corr.update_layout(
+                title="Correlation Matrix",
+                xaxis_title="",
+                yaxis_title="",
+                height=400
+            )
+            
+            st.plotly_chart(fig_corr, use_container_width=True)
+        
+        # Time-based Heatmaps
+        if date_col:
+            st.subheader("Time-based Heatmaps")
+            
+            for param in selected_params:
+                display_name = param_display_map[param]
+                
+                # Create hourly data
+                hourly_data = filtered_df.copy()
+                hourly_data['Hour'] = hourly_data[date_col].dt.hour
+                hourly_data['Date'] = hourly_data[date_col].dt.date
+                
+                # Pivot to create heatmap data
+                heatmap_data = hourly_data.pivot_table(
+                    values=param,
+                    index='Hour',
+                    columns='Date',
+                    aggfunc='mean'
+                )
+                
+                # Format column names
+                heatmap_data.columns = [col.strftime('%a %d') for col in heatmap_data.columns]
+                
+                # Create heatmap
+                fig_heat = go.Figure(data=go.Heatmap(
+                    z=heatmap_data.values,
+                    x=heatmap_data.columns,
+                    y=heatmap_data.index,
+                    colorscale='Viridis',
+                    colorbar=dict(title=display_name),
+                    hoverongaps=False
+                ))
+                
+                fig_heat.update_layout(
+                    title=f"{display_name} by Hour and Day",
+                    xaxis_title="Day",
+                    yaxis_title="Hour of Day",
+                    height=400
+                )
+                
+                st.plotly_chart(fig_heat, use_container_width=True)
         
         # Export options
         st.header("💾 Export Chart")
