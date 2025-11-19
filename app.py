@@ -76,6 +76,9 @@ try:
             ["Line Chart", "Scatter Plot", "Bar Chart", "Area Chart"]
         )
         
+        # Annotations toggle
+        show_annotations = st.checkbox("Show Annotations", value=True)
+        
         # Parameter selection
         numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
         
@@ -323,161 +326,162 @@ try:
             
             fig.add_trace(trace)
         
-        # Add annotations as vertical lines with labels above the chart
+        # Add annotations as vertical lines with labels above the chart (if enabled)
         chart_annotations = []
         annotation_shapes = []
         
-        # Sort annotations by x position to space them vertically
-        visible_annotations = []
-        for ann in st.session_state.annotations:
-            if ann['type'] == 'datetime' and date_col:
-                ann_dt = pd.Timestamp(ann['datetime'])
-                # Check if annotation date is in selected days
-                if 'selected_days' in st.session_state:
-                    if ann_dt.date() in st.session_state.selected_days:
+        if show_annotations:
+            # Sort annotations by x position to space them vertically
+            visible_annotations = []
+            for ann in st.session_state.annotations:
+                if ann['type'] == 'datetime' and date_col:
+                    ann_dt = pd.Timestamp(ann['datetime'])
+                    # Check if annotation date is in selected days
+                    if 'selected_days' in st.session_state:
+                        if ann_dt.date() in st.session_state.selected_days:
+                            visible_annotations.append({
+                                'x': ann_dt,
+                                'text': ann['text'],
+                                'datetime': ann_dt
+                            })
+                    else:
                         visible_annotations.append({
                             'x': ann_dt,
                             'text': ann['text'],
                             'datetime': ann_dt
                         })
-                else:
-                    visible_annotations.append({
-                        'x': ann_dt,
-                        'text': ann['text'],
-                        'datetime': ann_dt
-                    })
-            elif ann['type'] == 'index' and not date_col:
-                if ann['index'] in filtered_df.index:
-                    visible_annotations.append({
-                        'x': ann['index'],
-                        'text': ann['text'],
-                        'index': ann['index']
-                    })
-        
-        # Sort by x position
-        visible_annotations.sort(key=lambda a: a['x'])
-        
-        # Intelligent row assignment to avoid overlap
-        # Calculate approximate width of annotations based on text length
-        if date_col and len(visible_annotations) > 0:
-            # Get the x-axis range to calculate relative spacing
-            x_range = (filtered_df[date_col].max() - filtered_df[date_col].min()).total_seconds()
-            # Estimate annotation width as percentage of visible range (roughly 5% of range or 2 hours, whichever is larger)
-            min_spacing_seconds = max(x_range * 0.05, 7200)  # 2 hours minimum
-        else:
-            min_spacing_seconds = None
-        
-        # Assign each annotation to a row
-        rows = []  # Each row contains list of (x_position, annotation) tuples
-        
-        for ann in visible_annotations:
-            # Try to find a row where this annotation fits
-            placed = False
-            for row in rows:
-                # Check if annotation overlaps with any annotation in this row
-                overlaps = False
-                if date_col and min_spacing_seconds:
-                    for existing_x, _ in row:
-                        time_diff = abs((ann['x'] - existing_x).total_seconds())
-                        if time_diff < min_spacing_seconds:
-                            overlaps = True
-                            break
-                else:
-                    # For non-datetime, use simple spacing
-                    for existing_x, _ in row:
-                        if abs(ann['x'] - existing_x) < 50:  # Index-based spacing
-                            overlaps = True
-                            break
+                elif ann['type'] == 'index' and not date_col:
+                    if ann['index'] in filtered_df.index:
+                        visible_annotations.append({
+                            'x': ann['index'],
+                            'text': ann['text'],
+                            'index': ann['index']
+                        })
+            
+            # Sort by x position
+            visible_annotations.sort(key=lambda a: a['x'])
+            
+            # Intelligent row assignment to avoid overlap
+            # Calculate approximate width of annotations based on text length
+            if date_col and len(visible_annotations) > 0:
+                # Get the x-axis range to calculate relative spacing
+                x_range = (filtered_df[date_col].max() - filtered_df[date_col].min()).total_seconds()
+                # Estimate annotation width as percentage of visible range (roughly 5% of range or 2 hours, whichever is larger)
+                min_spacing_seconds = max(x_range * 0.05, 7200)  # 2 hours minimum
+            else:
+                min_spacing_seconds = None
+            
+            # Assign each annotation to a row
+            rows = []  # Each row contains list of (x_position, annotation) tuples
+            
+            for ann in visible_annotations:
+                # Try to find a row where this annotation fits
+                placed = False
+                for row in rows:
+                    # Check if annotation overlaps with any annotation in this row
+                    overlaps = False
+                    if date_col and min_spacing_seconds:
+                        for existing_x, _ in row:
+                            time_diff = abs((ann['x'] - existing_x).total_seconds())
+                            if time_diff < min_spacing_seconds:
+                                overlaps = True
+                                break
+                    else:
+                        # For non-datetime, use simple spacing
+                        for existing_x, _ in row:
+                            if abs(ann['x'] - existing_x) < 50:  # Index-based spacing
+                                overlaps = True
+                                break
+                    
+                    if not overlaps:
+                        row.append((ann['x'], ann))
+                        placed = True
+                        break
                 
-                if not overlaps:
-                    row.append((ann['x'], ann))
-                    placed = True
-                    break
+                if not placed:
+                    # Create new row
+                    rows.append([(ann['x'], ann)])
             
-            if not placed:
-                # Create new row
-                rows.append([(ann['x'], ann)])
-        
-        # Now render annotations based on their row assignment
-        row_height = 0.12  # Vertical spacing between rows
-        base_y = 1.02  # Starting position above chart
-        
-        for row_idx, row in enumerate(rows):
-            y_position = base_y + row_idx * row_height
+            # Now render annotations based on their row assignment
+            row_height = 0.12  # Vertical spacing between rows
+            base_y = 1.02  # Starting position above chart
             
-            for x_pos, ann in row:
-                # Add vertical line from annotation down to chart
-                annotation_shapes.append(
-                    dict(
-                        type='line',
-                        x0=x_pos,
-                        x1=x_pos,
-                        y0=0,
-                        y1=y_position - 0.01,  # Stop just below the annotation
-                        xref='x',
-                        yref='paper',
-                        line=dict(
-                            color='#666666',
-                            width=1,
-                            dash='dot'
+            for row_idx, row in enumerate(rows):
+                y_position = base_y + row_idx * row_height
+                
+                for x_pos, ann in row:
+                    # Add vertical line from annotation down to chart
+                    annotation_shapes.append(
+                        dict(
+                            type='line',
+                            x0=x_pos,
+                            x1=x_pos,
+                            y0=0,
+                            y1=y_position - 0.01,  # Stop just below the annotation
+                            xref='x',
+                            yref='paper',
+                            line=dict(
+                                color='#666666',
+                                width=1,
+                                dash='dot'
+                            )
                         )
                     )
-                )
-                
-                # Wrap text to prevent horizontal overflow
-                def wrap_text(text, max_chars=15):
-                    """Wrap text to multiple lines at word boundaries"""
-                    words = text.split()
-                    lines = []
-                    current_line = []
-                    current_length = 0
                     
-                    for word in words:
-                        word_length = len(word)
-                        if current_length + word_length + len(current_line) <= max_chars:
-                            current_line.append(word)
-                            current_length += word_length
-                        else:
-                            if current_line:
-                                lines.append(' '.join(current_line))
-                            current_line = [word]
-                            current_length = word_length
+                    # Wrap text to prevent horizontal overflow
+                    def wrap_text(text, max_chars=15):
+                        """Wrap text to multiple lines at word boundaries"""
+                        words = text.split()
+                        lines = []
+                        current_line = []
+                        current_length = 0
+                        
+                        for word in words:
+                            word_length = len(word)
+                            if current_length + word_length + len(current_line) <= max_chars:
+                                current_line.append(word)
+                                current_length += word_length
+                            else:
+                                if current_line:
+                                    lines.append(' '.join(current_line))
+                                current_line = [word]
+                                current_length = word_length
+                        
+                        if current_line:
+                            lines.append(' '.join(current_line))
+                        
+                        return '<br>'.join(lines)
                     
-                    if current_line:
-                        lines.append(' '.join(current_line))
+                    # Format datetime for display with wrapped text
+                    if 'datetime' in ann:
+                        wrapped_action = wrap_text(ann['text'], max_chars=15)
+                        datetime_str = ann['datetime'].strftime('%d %b %H:%M')
+                        label_text = f"<b>{wrapped_action}</b><br><span style='font-size:9pt'>{datetime_str}</span>"
+                    else:
+                        wrapped_action = wrap_text(ann['text'], max_chars=15)
+                        label_text = f"<b>{wrapped_action}</b>"
                     
-                    return '<br>'.join(lines)
-                
-                # Format datetime for display with wrapped text
-                if 'datetime' in ann:
-                    wrapped_action = wrap_text(ann['text'], max_chars=15)
-                    datetime_str = ann['datetime'].strftime('%d %b %H:%M')
-                    label_text = f"<b>{wrapped_action}</b><br><span style='font-size:9pt'>{datetime_str}</span>"
-                else:
-                    wrapped_action = wrap_text(ann['text'], max_chars=15)
-                    label_text = f"<b>{wrapped_action}</b>"
-                
-                # Add text annotation above the chart
-                chart_annotations.append(
-                    dict(
-                        x=x_pos,
-                        y=y_position,
-                        xref='x',
-                        yref='paper',
-                        text=label_text,
-                        showarrow=False,
-                        font=dict(
-                            size=11,
-                            color='#1a1a1a'
-                        ),
-                        bgcolor='rgba(255, 255, 255, 0.9)',
-                        bordercolor='#666666',
-                        borderwidth=1,
-                        borderpad=4,
-                        xanchor='center',
-                        align='center'
+                    # Add text annotation above the chart
+                    chart_annotations.append(
+                        dict(
+                            x=x_pos,
+                            y=y_position,
+                            xref='x',
+                            yref='paper',
+                            text=label_text,
+                            showarrow=False,
+                            font=dict(
+                                size=11,
+                                color='#1a1a1a'
+                            ),
+                            bgcolor='rgba(255, 255, 255, 0.9)',
+                            bordercolor='#666666',
+                            borderwidth=1,
+                            borderpad=4,
+                            xanchor='center',
+                            align='center'
+                        )
                     )
-                )
         
         # Configure layout with dual y-axes if needed
         has_right_axis = any(axis == "y2" for axis in y_axis_assignment.values())
@@ -643,14 +647,46 @@ try:
                     hide_index=True
                 )
         
-        # Correlation Matrix (always shows ALL parameters)
-        if len(numeric_cols) > 1:
+        # Correlation Matrix (always shows ALL parameters except Unnamed: 6)
+        # Filter out Unnamed: 6 from correlation matrix
+        corr_params = [p for p in numeric_cols if 'unnamed' not in p.lower()]
+        
+        if len(corr_params) > 1:
             st.subheader("Parameter Correlations")
             
-            # Calculate correlation matrix for all parameters
-            corr_matrix = filtered_df[numeric_cols].corr()
+            # Calculate correlation matrix for filtered parameters
+            corr_matrix = filtered_df[corr_params].corr()
             
-            # Create correlation heatmap
+            # Create a copy of the correlation values and modify diagonal to be grey
+            corr_values = corr_matrix.values.copy()
+            
+            # Create custom colorscale data with grey diagonal
+            import numpy as np
+            z_data = corr_values.copy()
+            
+            # Create mask for diagonal (will be displayed in grey)
+            n = len(corr_values)
+            colors = []
+            for i in range(n):
+                row_colors = []
+                for j in range(n):
+                    if i == j:
+                        # Diagonal - grey
+                        row_colors.append('#D3D3D3')
+                    else:
+                        # Use color based on correlation value
+                        val = corr_values[i, j]
+                        if val >= 0:
+                            # Positive correlation: interpolate from white (0) to red (1)
+                            intensity = int(255 * (1 - val))
+                            row_colors.append(f'rgb({255}, {intensity}, {intensity})')
+                        else:
+                            # Negative correlation: interpolate from white (0) to blue (-1)
+                            intensity = int(255 * (1 + val))
+                            row_colors.append(f'rgb({intensity}, {intensity}, {255})')
+                colors.append(row_colors)
+            
+            # Create correlation heatmap with custom colors
             fig_corr = go.Figure(data=go.Heatmap(
                 z=corr_matrix.values,
                 x=[param_display_map[p] for p in corr_matrix.columns],
@@ -662,11 +698,26 @@ try:
                 textfont={"size": 12},
                 colorbar=dict(title="Correlation"),
                 zmin=-1,
-                zmax=1
+                zmax=1,
+                customdata=np.arange(n*n).reshape(n, n),
+                hovertemplate='%{x} vs %{y}<br>Correlation: %{z:.2f}<extra></extra>'
             ))
             
+            # Update to use custom colors for diagonal
+            for i in range(n):
+                for j in range(n):
+                    if i == j:
+                        fig_corr.add_shape(
+                            type="rect",
+                            x0=j-0.5, x1=j+0.5,
+                            y0=i-0.5, y1=i+0.5,
+                            fillcolor='#D3D3D3',
+                            line_width=0,
+                            layer='above'
+                        )
+            
             fig_corr.update_layout(
-                title="Correlation Matrix (all parameters)",
+                title="Correlation Matrix (excluding Unnamed: 6)",
                 xaxis_title="",
                 yaxis_title="",
                 height=400

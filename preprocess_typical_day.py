@@ -36,11 +36,11 @@ print(f"Using date column: {date_col}")
 numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
 print(f"Found {len(numeric_cols)} numeric parameters: {numeric_cols}")
 
-# Create 15-minute time slots for the entire day (96 slots)
-time_slots = pd.date_range('00:00', '23:45', freq='15min').time
+# Create 15-minute time slots from 06:00 to 23:45 (72 slots, excluding 00:00-06:00)
+time_slots = pd.date_range('06:00', '23:45', freq='15min').time
 time_slot_labels = [t.strftime('%H:%M') for t in time_slots]
 
-print("Calculating typical day averages...")
+print("Calculating typical day averages (06:00-23:45 only)...")
 
 # Create a dataframe to store results
 results = pd.DataFrame({'Time': time_slot_labels})
@@ -82,6 +82,6 @@ print(f"Saving results to {OUTPUT_FILE}...")
 results.to_excel(OUTPUT_FILE, index=False)
 
 print("Done!")
-print(f"\nTypical day averages (as % of max) saved to: {OUTPUT_FILE}")
-print(f"Shape: {results.shape} (96 time slots × {len(numeric_cols)} parameters)")
-print("All values are now percentages (0-100%) of each parameter's typical weekly maximum.")
+print(f"\nTypical day averages (as % of range) saved to: {OUTPUT_FILE}")
+print(f"Shape: {results.shape} (72 time slots from 06:00-23:45 × {len(numeric_cols)} parameters)")
+print("All values are now percentages (0-100%) between min and max for each parameter (06:00-23:45 range).")
