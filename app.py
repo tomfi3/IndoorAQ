@@ -626,26 +626,51 @@ try:
                 )
                 st.write(f"**Range:** {min_val:.2f} - {max_val:.2f}")
         
-        # Daily Highs and Lows
+        # Daily Highs and Lows - All Parameters Combined
         if date_col:
-            st.subheader("Daily Highs and Lows")
+            st.subheader("Daily Min/Max/Average - All Parameters")
             
             # Create daily summary
             daily_stats = filtered_df.copy()
             daily_stats['Date'] = daily_stats[date_col].dt.date
             
+            # Build combined table with all parameters
+            combined_daily = None
+            
             for param in numeric_cols:
-                st.write(f"**{param_display_map[param]}**")
+                # Calculate daily stats for this parameter
+                param_daily = daily_stats.groupby('Date')[param].agg(['min', 'max', 'mean']).reset_index()
+                param_display = param_display_map[param]
                 
-                daily_summary = daily_stats.groupby('Date')[param].agg(['min', 'max', 'mean']).reset_index()
-                daily_summary.columns = ['Date', 'Low', 'High', 'Average']
-                daily_summary['Date'] = pd.to_datetime(daily_summary['Date']).dt.strftime('%a %d %b')
+                # Rename columns to include parameter name
+                param_daily.columns = ['Date', f'{param_display} Min', f'{param_display} Max', f'{param_display} Avg']
                 
-                st.dataframe(
-                    daily_summary,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                # Merge with combined table
+                if combined_daily is None:
+                    combined_daily = param_daily
+                else:
+                    combined_daily = combined_daily.merge(param_daily, on='Date', how='outer')
+            
+            # Format date for display
+            combined_daily['Date'] = pd.to_datetime(combined_daily['Date']).dt.strftime('%a %d %b')
+            
+            # Display the combined table
+            st.dataframe(
+                combined_daily,
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # Add download button for easy export
+            csv = combined_daily.to_csv(index=False)
+            st.download_button(
+                label="📥 Download Daily Stats as CSV",
+                data=csv,
+                file_name=f"daily_stats_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
+            
+            st.caption("💡 Tip: You can select and copy all cells from the table above, or download as CSV for easy import into Excel/Google Sheets.")
         
         # Correlation Matrix (always shows ALL parameters except Unnamed: 6)
         # Filter out Unnamed: 6 from correlation matrix
