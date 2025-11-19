@@ -707,6 +707,62 @@ try:
                 )
                 
                 st.plotly_chart(fig_heat, use_container_width=True)
+            
+            # Typical Day Pattern - 15-minute intervals averaged across all days
+            st.subheader("Typical Day Pattern (15-minute intervals)")
+            
+            # Create 15-minute time slots for the entire day (96 slots)
+            time_slots = pd.date_range('00:00', '23:45', freq='15min').time
+            time_slot_labels = [t.strftime('%H:%M') for t in time_slots]
+            
+            # Prepare data for all parameters
+            typical_day_data = []
+            param_names = []
+            
+            for param in selected_params:
+                # Create a copy and floor to 15-minute intervals
+                temp_df = filtered_df.copy()
+                temp_df['time_slot'] = temp_df[date_col].dt.floor('15min').dt.time
+                
+                # Group by time slot and calculate mean
+                avg_by_slot = temp_df.groupby('time_slot')[param].mean()
+                
+                # Reindex to include all 96 time slots (fill missing with NaN)
+                avg_by_slot = avg_by_slot.reindex(time_slots)
+                
+                typical_day_data.append(avg_by_slot.values)
+                param_names.append(param_display_map[param])
+            
+            # Create combined heatmap with all parameters
+            fig_typical = go.Figure(data=go.Heatmap(
+                z=typical_day_data,
+                x=time_slot_labels,
+                y=param_names,
+                colorscale='RdBu_r',  # Blue for low, red for high
+                colorbar=dict(title="Value"),
+                hoverongaps=False,
+                hovertemplate='%{y}<br>Time: %{x}<br>Value: %{z:.2f}<extra></extra>'
+            ))
+            
+            # Update layout to show only hourly labels
+            hourly_ticks = [i for i in range(0, 96, 4)]  # Every 4th slot = hourly
+            hourly_labels = [time_slot_labels[i] for i in hourly_ticks]
+            
+            fig_typical.update_layout(
+                title="Typical Day - Average Pattern Across Selected Days",
+                xaxis_title="Time of Day",
+                yaxis_title="Parameter",
+                height=max(200, len(selected_params) * 60),  # Scale height with number of parameters
+                xaxis=dict(
+                    tickmode='array',
+                    tickvals=hourly_ticks,
+                    ticktext=hourly_labels
+                )
+            )
+            
+            st.plotly_chart(fig_typical, use_container_width=True)
+            
+            st.caption("This heatmap shows the average value for each 15-minute period across all selected days, revealing typical daily patterns for each parameter.")
         
         # Export options
         st.header("💾 Export Chart")
