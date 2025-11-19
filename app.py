@@ -324,8 +324,9 @@ try:
         for ann in st.session_state.annotations:
             if ann['type'] == 'datetime' and date_col:
                 ann_dt = pd.Timestamp(ann['datetime'])
-                if start_date and end_date:
-                    if start_date <= ann_dt.date() <= end_date:
+                # Check if annotation date is in selected days
+                if 'selected_days' in st.session_state:
+                    if ann_dt.date() in st.session_state.selected_days:
                         visible_annotations.append({
                             'x': ann_dt,
                             'text': ann['text'],
