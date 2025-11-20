@@ -32,7 +32,7 @@ if 'annotations' not in st.session_state:
     st.session_state.annotations = []
 
 # Auto-load the data file
-DATA_FILE = "attached_assets/73 Oldfield Road - Full Data_1763474740403.xlsx"
+DATA_FILE = "attached_assets/73 Chestnut Road - Full Data_1763474740403.xlsx"
 TYPICAL_DAY_FILE = "attached_assets/typical_day_averages.xlsx"
 
 try:
@@ -521,7 +521,7 @@ try:
             min_date = filtered_df[date_col].min()
             max_date = filtered_df[date_col].max()
             date_range = f"From {min_date.strftime('%d %b %Y')} To {max_date.strftime('%d %b %Y')}"
-            chart_title = f"Chart of Indoor Air Quality Monitoring at 73 Oldfield Road {date_range} - {', '.join(display_param_names)}"
+            chart_title = f"Chart of Indoor Air Quality Monitoring at 73 Chestnut Road {date_range} - {', '.join(display_param_names)}"
         else:
             chart_title = f"{chart_type} - {', '.join(display_param_names)}"
         

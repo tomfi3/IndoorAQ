@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 # Input and output files
-INPUT_FILE = "attached_assets/73 Oldfield Road - Full Data_1763474740403.xlsx"
+INPUT_FILE = "attached_assets/73 Chestnut Road - Full Data_1763474740403.xlsx"
 OUTPUT_FILE = "attached_assets/typical_day_averages.xlsx"
 
 print("Loading data...")
