@@ -834,40 +834,6 @@ try:
                     st.code(traceback.format_exc())
             else:
                 st.info("Typical day averages not available. Run preprocess_typical_day.py to generate them.")
-        
-        # Export options
-        st.header("Export Chart")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            export_format = st.selectbox("Export Format", ["PNG", "JPG", "SVG", "PDF"])
-        
-        with col2:
-            export_width = st.number_input("Width (px)", min_value=400, max_value=4000, value=1200)
-        
-        with col3:
-            export_height = st.number_input("Height (px)", min_value=300, max_value=3000, value=600)
-        
-        filename = st.text_input("Filename", value="chart_export")
-        
-        if st.button("Download Chart", use_container_width=True):
-            try:
-                img_bytes = fig.to_image(
-                    format=export_format.lower(),
-                    width=export_width,
-                    height=export_height
-                )
-                
-                st.download_button(
-                    label=f"Save {export_format}",
-                    data=img_bytes,
-                    file_name=f"{filename}.{export_format.lower()}",
-                    mime=f"image/{export_format.lower()}",
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.error(f"Export failed: {str(e)}")
 
 except FileNotFoundError:
     st.error(f"Data file not found: {DATA_FILE}")
