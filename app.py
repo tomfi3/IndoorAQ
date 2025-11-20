@@ -6,7 +6,26 @@ import os
 
 st.set_page_config(page_title="Data Charting Tool", layout="wide")
 
-st.title("📊 Interactive Data Charting Tool")
+# Password protection
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("Indoor Air Quality Monitoring")
+    st.subheader("Login Required")
+    
+    password = st.text_input("Enter Password", type="password")
+    
+    if st.button("Login"):
+        if password == "pollution":
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect password")
+    
+    st.stop()
+
+st.title("Interactive Data Charting Tool")
 
 # Initialize session state for annotations
 if 'annotations' not in st.session_state:
@@ -61,7 +80,7 @@ try:
     
     # Sidebar controls
     with st.sidebar:
-        st.header("⚙️ Chart Configuration")
+        st.header("Chart Configuration")
         
         # Select date column
         if date_columns:
@@ -606,7 +625,7 @@ try:
         st.plotly_chart(fig, use_container_width=True)
         
         # Data Summary Section (always shows ALL parameters)
-        st.header("📊 Data Summary")
+        st.header("Data Summary")
         
         # Overall Statistics
         st.subheader("Overall Statistics")
@@ -664,13 +683,13 @@ try:
             # Add download button for easy export
             csv = combined_daily.to_csv(index=False)
             st.download_button(
-                label="📥 Download Daily Stats as CSV",
+                label="Download Daily Stats as CSV",
                 data=csv,
                 file_name=f"daily_stats_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv"
             )
             
-            st.caption("💡 Tip: You can select and copy all cells from the table above, or download as CSV for easy import into Excel/Google Sheets.")
+            st.caption("Tip: You can select and copy all cells from the table above, or download as CSV for easy import into Excel/Google Sheets.")
         
         # Correlation Matrix (always shows ALL parameters except Unnamed: 6)
         # Filter out Unnamed: 6 from correlation matrix
@@ -817,7 +836,7 @@ try:
                 st.info("Typical day averages not available. Run preprocess_typical_day.py to generate them.")
         
         # Export options
-        st.header("💾 Export Chart")
+        st.header("Export Chart")
         
         col1, col2, col3 = st.columns(3)
         
@@ -832,7 +851,7 @@ try:
         
         filename = st.text_input("Filename", value="chart_export")
         
-        if st.button("📥 Download Chart", use_container_width=True):
+        if st.button("Download Chart", use_container_width=True):
             try:
                 img_bytes = fig.to_image(
                     format=export_format.lower(),
@@ -841,7 +860,7 @@ try:
                 )
                 
                 st.download_button(
-                    label=f"💾 Save {export_format}",
+                    label=f"Save {export_format}",
                     data=img_bytes,
                     file_name=f"{filename}.{export_format.lower()}",
                     mime=f"image/{export_format.lower()}",
