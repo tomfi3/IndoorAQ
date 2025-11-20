@@ -32,8 +32,10 @@ df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
 
 print(f"Using date column: {date_col}")
 
-# Identify numeric parameters (excluding the date column)
+# Identify numeric parameters (excluding the date column and Unnamed: 6)
 numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+# Filter out Unnamed: 6
+numeric_cols = [col for col in numeric_cols if 'unnamed' not in col.lower()]
 print(f"Found {len(numeric_cols)} numeric parameters: {numeric_cols}")
 
 # Create 15-minute time slots from 06:00 to 23:45 (72 slots, excluding 00:00-06:00)

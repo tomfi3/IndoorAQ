@@ -100,6 +100,8 @@ try:
         
         # Parameter selection
         numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+        # Filter out Unnamed: 6
+        numeric_cols = [col for col in numeric_cols if 'unnamed' not in col.lower()]
         
         if not numeric_cols:
             st.error("No numeric columns found in the data!")
