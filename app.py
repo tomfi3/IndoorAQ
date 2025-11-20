@@ -750,49 +750,8 @@ try:
             
             st.plotly_chart(fig_corr, use_container_width=True)
         
-        # Time-based Heatmaps (always shows ALL parameters)
+        # Typical Day Pattern - 15-minute intervals averaged across all days (always shows ALL parameters)
         if date_col:
-            st.subheader("Time-based Heatmaps")
-            
-            for param in numeric_cols:
-                display_name = param_display_map[param]
-                
-                # Create hourly data
-                hourly_data = filtered_df.copy()
-                hourly_data['Hour'] = hourly_data[date_col].dt.hour
-                hourly_data['Date'] = hourly_data[date_col].dt.date
-                
-                # Pivot to create heatmap data
-                heatmap_data = hourly_data.pivot_table(
-                    values=param,
-                    index='Hour',
-                    columns='Date',
-                    aggfunc='mean'
-                )
-                
-                # Format column names
-                heatmap_data.columns = [col.strftime('%a %d') for col in heatmap_data.columns]
-                
-                # Create heatmap with blue-to-red color scale
-                fig_heat = go.Figure(data=go.Heatmap(
-                    z=heatmap_data.values,
-                    x=heatmap_data.columns,
-                    y=heatmap_data.index,
-                    colorscale='RdBu_r',  # Blue for low values, Red for high values
-                    colorbar=dict(title=display_name),
-                    hoverongaps=False
-                ))
-                
-                fig_heat.update_layout(
-                    title=f"{display_name} by Hour and Day",
-                    xaxis_title="Day",
-                    yaxis_title="Hour of Day",
-                    height=400
-                )
-                
-                st.plotly_chart(fig_heat, use_container_width=True)
-            
-            # Typical Day Pattern - 15-minute intervals averaged across all days (always shows ALL parameters)
             st.subheader("Typical Day Pattern (15-minute intervals)")
             
             if typical_day_df is not None:
