@@ -445,8 +445,8 @@ def render_session_tab(session_key, session_config):
     # --- Data Summary ---
     st.header("Data Summary")
     st.subheader("Overall Statistics")
-    stats_cols = st.columns(len(numeric_cols))
-    for idx, param in enumerate(numeric_cols):
+    stats_cols = st.columns(len(selected_params))
+    for idx, param in enumerate(selected_params):
         with stats_cols[idx]:
             dn = param_display_map[param]
             avg_val = filtered_df[param].mean()
@@ -457,11 +457,11 @@ def render_session_tab(session_key, session_config):
 
     # Daily stats
     if date_col:
-        st.subheader("Daily Min/Max/Average - All Parameters")
+        st.subheader("Daily Min/Max/Average")
         daily_stats = filtered_df.copy()
         daily_stats['Date'] = daily_stats[date_col].dt.date
         combined_daily = None
-        for param in numeric_cols:
+        for param in selected_params:
             param_daily = daily_stats.groupby('Date')[param].agg(['min', 'max', 'mean']).reset_index()
             pd_name = param_display_map[param]
             param_daily.columns = ['Date', f'{pd_name} Min', f'{pd_name} Max', f'{pd_name} Avg']
@@ -477,7 +477,7 @@ def render_session_tab(session_key, session_config):
                            mime="text/csv", key=f"{session_key}_csv_dl")
 
     # Correlation matrix
-    corr_params = [p for p in numeric_cols if 'unnamed' not in p.lower()]
+    corr_params = [p for p in selected_params if 'unnamed' not in p.lower()]
     if len(corr_params) > 1:
         st.subheader("Parameter Correlations")
         corr_matrix = filtered_df[corr_params].corr()
@@ -504,7 +504,7 @@ def render_session_tab(session_key, session_config):
             time_slot_labels = typical_day_df['Time'].tolist()
             typical_data = []
             param_names = []
-            for param in numeric_cols:
+            for param in selected_params:
                 if param in typical_day_df.columns:
                     typical_data.append(typical_day_df[param].values)
                     param_names.append(param_display_map[param])
@@ -523,7 +523,7 @@ def render_session_tab(session_key, session_config):
                 fig_typical.update_layout(
                     title="Typical Day - Average Pattern Across All Data (06:00-23:45)",
                     xaxis_title="Time of Day", yaxis_title="Parameter",
-                    height=max(200, len(numeric_cols) * 60),
+                    height=max(200, len(selected_params) * 60),
                     xaxis=dict(tickmode='array', tickvals=hourly_ticks, ticktext=hourly_labels)
                 )
                 st.plotly_chart(fig_typical, use_container_width=True)
