@@ -205,9 +205,6 @@ def render_session_tab(session_key, session_config):
 
         show_annotations = st.checkbox("Show Annotations", value=True, key=f"{session_key}_annotations")
 
-        filter_outliers = st.checkbox("Remove dust outliers", value=False, key=f"{session_key}_filter_outliers",
-                                       help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
-
         display_names = [param_display_map[col] for col in numeric_cols]
         default_display = [param_display_map[col] for col in numeric_cols[:min(3, len(numeric_cols))]]
 
@@ -263,7 +260,9 @@ def render_session_tab(session_key, session_config):
     else:
         filtered_df = df
 
-    # Apply dust outlier filter if enabled
+    # Dust outlier filter
+    filter_outliers = st.checkbox("Remove dust outliers", value=False, key=f"{session_key}_filter_outliers",
+                                   help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
     if filter_outliers and 'Dust' in filtered_df.columns and not filtered_df.empty:
         q1 = filtered_df['Dust'].quantile(0.25)
         q3 = filtered_df['Dust'].quantile(0.75)
