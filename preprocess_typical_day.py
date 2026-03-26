@@ -1,89 +1,93 @@
 """
-Preprocessing script to calculate and save typical day averages as percentages
-This calculates the average value for each 15-minute period of the day
+Preprocessing script to calculate and save typical day averages as percentages.
+Calculates the average value for each 15-minute period of the day
 across all available data, then converts to percentage of maximum for each parameter.
+
+Usage: python preprocess_typical_day.py [session1|session2|all]
 """
 
 import pandas as pd
 import numpy as np
+import sys
 
-# Input and output files
-INPUT_FILE = "attached_assets/73 Chestnut Road - Full Data_1763474740403.xlsx"
-OUTPUT_FILE = "attached_assets/typical_day_averages.xlsx"
+SESSIONS = {
+    "session1": {
+        "input": "attached_assets/session1/data.xlsx",
+        "output": "attached_assets/session1/typical_day_averages.xlsx",
+    },
+    "session2": {
+        "input": "attached_assets/session2/data.xlsx",
+        "output": "attached_assets/session2/typical_day_averages.xlsx",
+    },
+}
 
-print("Loading data...")
-df = pd.read_excel(INPUT_FILE)
 
-# Identify date column
-date_columns = []
-for col in df.columns:
-    if df[col].dtype in ['datetime64[ns]', 'object']:
-        try:
-            pd.to_datetime(df[col])
-            date_columns.append(col)
-        except:
-            pass
+def process_session(name, input_file, output_file):
+    print(f"\n=== Processing {name} ===")
+    print(f"Loading data from {input_file}...")
+    df = pd.read_excel(input_file)
 
-if not date_columns:
-    raise ValueError("No date column found in the data")
+    # Identify date column
+    date_columns = []
+    for col in df.columns:
+        if df[col].dtype in ['datetime64[ns]', 'datetime64[us]', 'object']:
+            try:
+                pd.to_datetime(df[col])
+                date_columns.append(col)
+            except:
+                pass
 
-date_col = date_columns[0]
-df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+    if not date_columns:
+        raise ValueError("No date column found in the data")
 
-print(f"Using date column: {date_col}")
+    date_col = date_columns[0]
+    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+    print(f"Using date column: {date_col}")
 
-# Identify numeric parameters (excluding the date column and Unnamed: 6)
-numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
-# Filter out Unnamed: 6
-numeric_cols = [col for col in numeric_cols if 'unnamed' not in col.lower()]
-print(f"Found {len(numeric_cols)} numeric parameters: {numeric_cols}")
+    numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    numeric_cols = [col for col in numeric_cols if 'unnamed' not in col.lower()]
+    print(f"Found {len(numeric_cols)} numeric parameters: {numeric_cols}")
 
-# Create 15-minute time slots from 06:00 to 23:45 (72 slots, excluding 00:00-06:00)
-time_slots = pd.date_range('06:00', '23:45', freq='15min').time
-time_slot_labels = [t.strftime('%H:%M') for t in time_slots]
+    # Create 15-minute time slots from 06:00 to 23:45
+    time_slots = pd.date_range('06:00', '23:45', freq='15min').time
+    time_slot_labels = [t.strftime('%H:%M') for t in time_slots]
 
-print("Calculating typical day averages (06:00-23:45 only)...")
+    print("Calculating typical day averages (06:00-23:45 only)...")
+    results = pd.DataFrame({'Time': time_slot_labels})
 
-# Create a dataframe to store results
-results = pd.DataFrame({'Time': time_slot_labels})
+    for param in numeric_cols:
+        print(f"  Processing {param}...")
+        temp_df = df[[date_col, param]].copy()
+        temp_df['time_slot'] = temp_df[date_col].dt.floor('15min').dt.time
+        avg_by_slot = temp_df.groupby('time_slot')[param].mean()
+        avg_by_slot = avg_by_slot.reindex(time_slots)
 
-# Calculate average for each parameter and convert to percentage
-for param in numeric_cols:
-    print(f"  Processing {param}...")
-    
-    # Create temporary dataframe with date and parameter
-    temp_df = df[[date_col, param]].copy()
-    
-    # Floor to 15-minute intervals
-    temp_df['time_slot'] = temp_df[date_col].dt.floor('15min').dt.time
-    
-    # Group by time slot and calculate mean
-    avg_by_slot = temp_df.groupby('time_slot')[param].mean()
-    
-    # Reindex to include all 96 time slots
-    avg_by_slot = avg_by_slot.reindex(time_slots)
-    
-    # Convert to percentage between minimum and maximum value
-    min_val = avg_by_slot.min()
-    max_val = avg_by_slot.max()
-    
-    if max_val > min_val:
-        # Normalize to 0-100% between min and max
-        percent_values = ((avg_by_slot - min_val) / (max_val - min_val)) * 100
-        print(f"    Min: {min_val:.2f}, Max: {max_val:.2f}, normalized to 0-100% scale")
+        min_val = avg_by_slot.min()
+        max_val = avg_by_slot.max()
+
+        if max_val > min_val:
+            percent_values = ((avg_by_slot - min_val) / (max_val - min_val)) * 100
+            print(f"    Min: {min_val:.2f}, Max: {max_val:.2f}, normalized to 0-100%")
+        else:
+            percent_values = avg_by_slot * 0 + 50
+            print(f"    Min equals Max ({min_val:.2f}), using 50%")
+
+        results[param] = percent_values.values
+
+    print(f"Saving results to {output_file}...")
+    results.to_excel(output_file, index=False)
+    print(f"Done! Shape: {results.shape}")
+
+
+if __name__ == "__main__":
+    target = sys.argv[1] if len(sys.argv) > 1 else "all"
+
+    if target == "all":
+        for name, config in SESSIONS.items():
+            process_session(name, config["input"], config["output"])
+    elif target in SESSIONS:
+        config = SESSIONS[target]
+        process_session(target, config["input"], config["output"])
     else:
-        # If min equals max, set all to 50%
-        percent_values = avg_by_slot * 0 + 50
-        print(f"    Min equals Max ({min_val:.2f}), using 50%")
-    
-    # Add to results dataframe
-    results[param] = percent_values.values
-
-# Save to Excel
-print(f"Saving results to {OUTPUT_FILE}...")
-results.to_excel(OUTPUT_FILE, index=False)
-
-print("Done!")
-print(f"\nTypical day averages (as % of range) saved to: {OUTPUT_FILE}")
-print(f"Shape: {results.shape} (72 time slots from 06:00-23:45 × {len(numeric_cols)} parameters)")
-print("All values are now percentages (0-100%) between min and max for each parameter (06:00-23:45 range).")
+        print(f"Unknown session: {target}. Use: session1, session2, or all")
+        sys.exit(1)
