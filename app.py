@@ -445,8 +445,8 @@ def render_session_tab(session_key, session_config):
     # --- Data Summary ---
     st.header("Data Summary")
     st.subheader("Overall Statistics")
-    stats_cols = st.columns(len(numeric_cols))
-    for idx, param in enumerate(numeric_cols):
+    stats_cols = st.columns(len(selected_params))
+    for idx, param in enumerate(selected_params):
         with stats_cols[idx]:
             dn = param_display_map[param]
             avg_val = filtered_df[param].mean()
@@ -457,11 +457,11 @@ def render_session_tab(session_key, session_config):
 
     # Daily stats
     if date_col:
-        st.subheader("Daily Min/Max/Average - All Parameters")
+        st.subheader("Daily Min/Max/Average")
         daily_stats = filtered_df.copy()
         daily_stats['Date'] = daily_stats[date_col].dt.date
         combined_daily = None
-        for param in numeric_cols:
+        for param in selected_params:
             param_daily = daily_stats.groupby('Date')[param].agg(['min', 'max', 'mean']).reset_index()
             pd_name = param_display_map[param]
             param_daily.columns = ['Date', f'{pd_name} Min', f'{pd_name} Max', f'{pd_name} Avg']
@@ -477,7 +477,7 @@ def render_session_tab(session_key, session_config):
                            mime="text/csv", key=f"{session_key}_csv_dl")
 
     # Correlation matrix
-    corr_params = [p for p in numeric_cols if 'unnamed' not in p.lower()]
+    corr_params = [p for p in selected_params if 'unnamed' not in p.lower()]
     if len(corr_params) > 1:
         st.subheader("Parameter Correlations")
         corr_matrix = filtered_df[corr_params].corr()
@@ -504,7 +504,7 @@ def render_session_tab(session_key, session_config):
             time_slot_labels = typical_day_df['Time'].tolist()
             typical_data = []
             param_names = []
-            for param in numeric_cols:
+            for param in selected_params:
                 if param in typical_day_df.columns:
                     typical_data.append(typical_day_df[param].values)
                     param_names.append(param_display_map[param])
@@ -523,7 +523,7 @@ def render_session_tab(session_key, session_config):
                 fig_typical.update_layout(
                     title="Typical Day - Average Pattern Across All Data (06:00-23:45)",
                     xaxis_title="Time of Day", yaxis_title="Parameter",
-                    height=max(200, len(numeric_cols) * 60),
+                    height=max(200, len(selected_params) * 60),
                     xaxis=dict(tickmode='array', tickvals=hourly_ticks, ticktext=hourly_labels)
                 )
                 st.plotly_chart(fig_typical, use_container_width=True)
@@ -642,27 +642,48 @@ def render_comparison_tab():
     # --- Comparison chart ---
     st.header("Session Comparison")
 
+    # Distinct colours for each session
+    SESSION1_COLOR = '#0072B2'  # Blue
+    SESSION2_COLOR = '#D55E00'  # Orange
+
+    def insert_gap_breaks(df_in, x_col, y_col, gap_minutes=2):
+        """Insert None values where time gaps exceed threshold to break line."""
+        plot_df = df_in[[x_col, y_col]].copy()
+        plot_df = plot_df.sort_values(x_col).reset_index(drop=True)
+        plot_df['_td'] = plot_df[x_col].diff()
+        rows_to_insert = []
+        for i in plot_df.index[1:]:
+            td = plot_df.loc[i, '_td']
+            if pd.notna(td) and td > timedelta(minutes=gap_minutes):
+                rows_to_insert.append({x_col: plot_df.loc[i, x_col] - timedelta(seconds=1), y_col: None})
+        if rows_to_insert:
+            insert_df = pd.DataFrame(rows_to_insert)
+            plot_df = pd.concat([plot_df[[x_col, y_col]], insert_df], ignore_index=True)
+            plot_df = plot_df.sort_values(x_col).reset_index(drop=True)
+        return plot_df[x_col], plot_df[y_col]
+
     for param in selected:
-        color = get_param_color(param)
         dn = param_display_map[param]
 
         fig = go.Figure()
 
-        # Session 1 - solid line
+        # Session 1 - solid blue
         if not f1.empty:
+            x_plot, y_plot = insert_gap_breaks(f1, '_aligned', param)
             fig.add_trace(go.Scatter(
-                x=f1['_aligned'], y=f1[param],
+                x=x_plot, y=y_plot,
                 name=f'Session 1 - {dn}',
-                mode='lines', line=dict(color=color, width=2),
+                mode='lines', line=dict(color=SESSION1_COLOR, width=2),
                 connectgaps=False
             ))
 
-        # Session 2 - dashed line
+        # Session 2 - solid orange
         if not f2.empty:
+            x_plot, y_plot = insert_gap_breaks(f2, '_aligned', param)
             fig.add_trace(go.Scatter(
-                x=f2['_aligned'], y=f2[param],
+                x=x_plot, y=y_plot,
                 name=f'Session 2 - {dn}',
-                mode='lines', line=dict(color=color, width=2, dash='dash'),
+                mode='lines', line=dict(color=SESSION2_COLOR, width=2),
                 connectgaps=False
             ))
 
@@ -692,39 +713,90 @@ def render_comparison_tab():
         dn = param_display_map[param]
         st.subheader(dn)
 
+        # Collect numeric stats for chart and formatted stats for table
+        chart_days = []
+        s1_avgs, s1_mins, s1_maxs = [], [], []
+        s2_avgs, s2_mins, s2_maxs = [], [], []
         stats_data = []
+
         for wd in sorted(sel_days):
             day_name = day_names[wd]
             s1_day = f1[f1['_weekday'] == wd][param].dropna()
             s2_day = f2[f2['_weekday'] == wd][param].dropna()
+            chart_days.append(day_name)
 
             row = {'Day': day_name}
             if len(s1_day) > 0:
-                row['S1 Min'] = f"{s1_day.min():.1f}"
-                row['S1 Avg'] = f"{s1_day.mean():.1f}"
-                row['S1 Max'] = f"{s1_day.max():.1f}"
+                s1_min, s1_avg, s1_max = s1_day.min(), s1_day.mean(), s1_day.max()
+                row['S1 Min'] = f"{s1_min:.1f}"
+                row['S1 Avg'] = f"{s1_avg:.1f}"
+                row['S1 Max'] = f"{s1_max:.1f}"
+                s1_avgs.append(s1_avg)
+                s1_mins.append(s1_min)
+                s1_maxs.append(s1_max)
             else:
                 row['S1 Min'] = '-'
                 row['S1 Avg'] = '-'
                 row['S1 Max'] = '-'
+                s1_avgs.append(None)
+                s1_mins.append(None)
+                s1_maxs.append(None)
 
             if len(s2_day) > 0:
-                row['S2 Min'] = f"{s2_day.min():.1f}"
-                row['S2 Avg'] = f"{s2_day.mean():.1f}"
-                row['S2 Max'] = f"{s2_day.max():.1f}"
+                s2_min, s2_avg, s2_max = s2_day.min(), s2_day.mean(), s2_day.max()
+                row['S2 Min'] = f"{s2_min:.1f}"
+                row['S2 Avg'] = f"{s2_avg:.1f}"
+                row['S2 Max'] = f"{s2_max:.1f}"
+                s2_avgs.append(s2_avg)
+                s2_mins.append(s2_min)
+                s2_maxs.append(s2_max)
             else:
                 row['S2 Min'] = '-'
                 row['S2 Avg'] = '-'
                 row['S2 Max'] = '-'
+                s2_avgs.append(None)
+                s2_mins.append(None)
+                s2_maxs.append(None)
 
-            # Change indicator
             if len(s1_day) > 0 and len(s2_day) > 0:
-                change = ((s2_day.mean() - s1_day.mean()) / s1_day.mean()) * 100
+                change = ((s2_avg - s1_avg) / s1_avg) * 100
                 row['Change'] = f"{change:+.1f}%"
             else:
                 row['Change'] = '-'
 
             stats_data.append(row)
+
+        # Bar chart with error bars for min/max
+        fig_bar = go.Figure()
+
+        # Compute error bar values (distance from avg to min/max)
+        s1_err_minus = [a - m if a is not None and m is not None else 0 for a, m in zip(s1_avgs, s1_mins)]
+        s1_err_plus = [m - a if a is not None and m is not None else 0 for a, m in zip(s1_avgs, s1_maxs)]
+        s2_err_minus = [a - m if a is not None and m is not None else 0 for a, m in zip(s2_avgs, s2_mins)]
+        s2_err_plus = [m - a if a is not None and m is not None else 0 for a, m in zip(s2_avgs, s2_maxs)]
+
+        fig_bar.add_trace(go.Bar(
+            name='Session 1', x=chart_days, y=s1_avgs,
+            marker_color=SESSION1_COLOR,
+            error_y=dict(type='data', symmetric=False,
+                         array=s1_err_plus, arrayminus=s1_err_minus,
+                         color='#333333', thickness=1.5, width=4)
+        ))
+        fig_bar.add_trace(go.Bar(
+            name='Session 2', x=chart_days, y=s2_avgs,
+            marker_color=SESSION2_COLOR,
+            error_y=dict(type='data', symmetric=False,
+                         array=s2_err_plus, arrayminus=s2_err_minus,
+                         color='#333333', thickness=1.5, width=4)
+        ))
+        fig_bar.update_layout(
+            barmode='group',
+            title=f'{dn} - Daily Average (with Min/Max range)',
+            yaxis_title=dn,
+            height=400,
+            legend=dict(orientation='h', yanchor='top', y=-0.15, xanchor='center', x=0.5)
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
         st.dataframe(pd.DataFrame(stats_data), use_container_width=True, hide_index=True)
 

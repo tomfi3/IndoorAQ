@@ -1,5 +1,7 @@
 [server]
 headless = true
+enableStaticServing = false
+maxMessageSize = 200
 
 [theme]
 primaryColor = "#0072B2"
