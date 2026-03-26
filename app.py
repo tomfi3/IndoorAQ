@@ -642,27 +642,48 @@ def render_comparison_tab():
     # --- Comparison chart ---
     st.header("Session Comparison")
 
+    # Distinct colours for each session
+    SESSION1_COLOR = '#0072B2'  # Blue
+    SESSION2_COLOR = '#D55E00'  # Orange
+
+    def insert_gap_breaks(df_in, x_col, y_col, gap_minutes=2):
+        """Insert None values where time gaps exceed threshold to break line."""
+        plot_df = df_in[[x_col, y_col]].copy()
+        plot_df = plot_df.sort_values(x_col).reset_index(drop=True)
+        plot_df['_td'] = plot_df[x_col].diff()
+        rows_to_insert = []
+        for i in plot_df.index[1:]:
+            td = plot_df.loc[i, '_td']
+            if pd.notna(td) and td > timedelta(minutes=gap_minutes):
+                rows_to_insert.append({x_col: plot_df.loc[i, x_col] - timedelta(seconds=1), y_col: None})
+        if rows_to_insert:
+            insert_df = pd.DataFrame(rows_to_insert)
+            plot_df = pd.concat([plot_df[[x_col, y_col]], insert_df], ignore_index=True)
+            plot_df = plot_df.sort_values(x_col).reset_index(drop=True)
+        return plot_df[x_col], plot_df[y_col]
+
     for param in selected:
-        color = get_param_color(param)
         dn = param_display_map[param]
 
         fig = go.Figure()
 
-        # Session 1 - solid line
+        # Session 1 - solid blue
         if not f1.empty:
+            x_plot, y_plot = insert_gap_breaks(f1, '_aligned', param)
             fig.add_trace(go.Scatter(
-                x=f1['_aligned'], y=f1[param],
+                x=x_plot, y=y_plot,
                 name=f'Session 1 - {dn}',
-                mode='lines', line=dict(color=color, width=2),
+                mode='lines', line=dict(color=SESSION1_COLOR, width=2),
                 connectgaps=False
             ))
 
-        # Session 2 - dashed line
+        # Session 2 - solid orange
         if not f2.empty:
+            x_plot, y_plot = insert_gap_breaks(f2, '_aligned', param)
             fig.add_trace(go.Scatter(
-                x=f2['_aligned'], y=f2[param],
+                x=x_plot, y=y_plot,
                 name=f'Session 2 - {dn}',
-                mode='lines', line=dict(color=color, width=2, dash='dash'),
+                mode='lines', line=dict(color=SESSION2_COLOR, width=2),
                 connectgaps=False
             ))
 
