@@ -567,26 +567,23 @@ def render_comparison_tab():
 
     param_display_map = {col: get_display_name(col) for col in common_params}
 
-    # Sidebar controls for comparison
-    with st.sidebar:
-        st.header("Comparison Settings")
+    # Parameter selector in main content area
+    display_names = [param_display_map[c] for c in common_params]
+    param_reverse = {v: k for k, v in param_display_map.items()}
+    default = display_names[:min(3, len(display_names))]
 
-        display_names = [param_display_map[c] for c in common_params]
-        param_reverse = {v: k for k, v in param_display_map.items()}
-        default = [display_names[0]] if display_names else []
+    selected_display = st.multiselect(
+        "Select Parameters to Compare",
+        display_names,
+        default=default,
+        key="comparison_params"
+    )
 
-        selected_display = st.multiselect(
-            "Parameters to Compare",
-            display_names,
-            default=default,
-            key="comparison_params"
-        )
+    if not selected_display:
+        st.warning("Select at least one parameter.")
+        return
 
-        if not selected_display:
-            st.warning("Select at least one parameter.")
-            st.stop()
-
-        selected = [param_reverse[d] for d in selected_display]
+    selected = [param_reverse[d] for d in selected_display]
 
     # Build day-of-week aligned data
     # Session 1: starts Tue Nov 11. Session 2: starts Tue Mar 17.
