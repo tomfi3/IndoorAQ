@@ -205,6 +205,9 @@ def render_session_tab(session_key, session_config):
 
         show_annotations = st.checkbox("Show Annotations", value=True, key=f"{session_key}_annotations")
 
+        filter_outliers = st.checkbox("Remove dust outliers", value=False, key=f"{session_key}_filter_outliers",
+                                       help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
+
         display_names = [param_display_map[col] for col in numeric_cols]
         default_display = [param_display_map[col] for col in numeric_cols[:min(3, len(numeric_cols))]]
 
@@ -259,6 +262,17 @@ def render_session_tab(session_key, session_config):
             filtered_df = pd.DataFrame()
     else:
         filtered_df = df
+
+    # Apply dust outlier filter if enabled
+    if filter_outliers and 'Dust' in filtered_df.columns and not filtered_df.empty:
+        q1 = filtered_df['Dust'].quantile(0.25)
+        q3 = filtered_df['Dust'].quantile(0.75)
+        iqr = q3 - q1
+        upper_bound = q3 + 3 * iqr
+        outlier_count = (filtered_df['Dust'] > upper_bound).sum()
+        filtered_df = filtered_df[filtered_df['Dust'] <= upper_bound].copy()
+        if outlier_count > 0:
+            st.info(f"Removed {outlier_count} dust outlier readings above {upper_bound:.0f} μg/m³ (IQR method, 3x threshold).")
 
     # --- Chart ---
     st.header("Chart")
@@ -585,6 +599,9 @@ def render_comparison_tab():
 
     selected = [param_reverse[d] for d in selected_display]
 
+    filter_outliers = st.checkbox("Remove dust outliers", value=False, key="comparison_filter_outliers",
+                                   help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
+
     # Build day-of-week aligned data
     # Session 1: starts Tue Nov 11. Session 2: starts Tue Mar 17.
     # Align by day-of-week name + time of day.
@@ -631,6 +648,24 @@ def render_comparison_tab():
     sel_days = st.session_state.comparison_selected_days
     f1 = df1_copy[df1_copy['_weekday'].isin(sel_days)]
     f2 = df2_copy[df2_copy['_weekday'].isin(sel_days)]
+
+    # Apply dust outlier filter
+    if filter_outliers:
+        for label, fdf in [('Session 1', f1), ('Session 2', f2)]:
+            if 'Dust' in fdf.columns and not fdf.empty:
+                q1 = fdf['Dust'].quantile(0.25)
+                q3 = fdf['Dust'].quantile(0.75)
+                iqr = q3 - q1
+                upper = q3 + 3 * iqr
+                count = (fdf['Dust'] > upper).sum()
+                if count > 0:
+                    st.info(f"{label}: Removed {count} dust outlier readings above {upper:.0f} μg/m³")
+        if 'Dust' in f1.columns and not f1.empty:
+            q1, q3 = f1['Dust'].quantile(0.25), f1['Dust'].quantile(0.75)
+            f1 = f1[f1['Dust'] <= q3 + 3 * (q3 - q1)]
+        if 'Dust' in f2.columns and not f2.empty:
+            q1, q3 = f2['Dust'].quantile(0.25), f2['Dust'].quantile(0.75)
+            f2 = f2[f2['Dust'] <= q3 + 3 * (q3 - q1)]
 
     if f1.empty and f2.empty:
         st.warning("No data for selected days.")
