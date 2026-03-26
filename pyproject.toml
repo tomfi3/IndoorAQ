@@ -1,7 +1,7 @@
 [project]
-name = "repl-nix-workspace"
+name = "indoor-aq"
 version = "0.1.0"
-description = "Add your description here"
+description = "Indoor Air Quality Monitoring Dashboard"
 requires-python = ">=3.11"
 dependencies = [
     "kaleido>=1.2.0",
