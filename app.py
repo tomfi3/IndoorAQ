@@ -713,39 +713,90 @@ def render_comparison_tab():
         dn = param_display_map[param]
         st.subheader(dn)
 
+        # Collect numeric stats for chart and formatted stats for table
+        chart_days = []
+        s1_avgs, s1_mins, s1_maxs = [], [], []
+        s2_avgs, s2_mins, s2_maxs = [], [], []
         stats_data = []
+
         for wd in sorted(sel_days):
             day_name = day_names[wd]
             s1_day = f1[f1['_weekday'] == wd][param].dropna()
             s2_day = f2[f2['_weekday'] == wd][param].dropna()
+            chart_days.append(day_name)
 
             row = {'Day': day_name}
             if len(s1_day) > 0:
-                row['S1 Min'] = f"{s1_day.min():.1f}"
-                row['S1 Avg'] = f"{s1_day.mean():.1f}"
-                row['S1 Max'] = f"{s1_day.max():.1f}"
+                s1_min, s1_avg, s1_max = s1_day.min(), s1_day.mean(), s1_day.max()
+                row['S1 Min'] = f"{s1_min:.1f}"
+                row['S1 Avg'] = f"{s1_avg:.1f}"
+                row['S1 Max'] = f"{s1_max:.1f}"
+                s1_avgs.append(s1_avg)
+                s1_mins.append(s1_min)
+                s1_maxs.append(s1_max)
             else:
                 row['S1 Min'] = '-'
                 row['S1 Avg'] = '-'
                 row['S1 Max'] = '-'
+                s1_avgs.append(None)
+                s1_mins.append(None)
+                s1_maxs.append(None)
 
             if len(s2_day) > 0:
-                row['S2 Min'] = f"{s2_day.min():.1f}"
-                row['S2 Avg'] = f"{s2_day.mean():.1f}"
-                row['S2 Max'] = f"{s2_day.max():.1f}"
+                s2_min, s2_avg, s2_max = s2_day.min(), s2_day.mean(), s2_day.max()
+                row['S2 Min'] = f"{s2_min:.1f}"
+                row['S2 Avg'] = f"{s2_avg:.1f}"
+                row['S2 Max'] = f"{s2_max:.1f}"
+                s2_avgs.append(s2_avg)
+                s2_mins.append(s2_min)
+                s2_maxs.append(s2_max)
             else:
                 row['S2 Min'] = '-'
                 row['S2 Avg'] = '-'
                 row['S2 Max'] = '-'
+                s2_avgs.append(None)
+                s2_mins.append(None)
+                s2_maxs.append(None)
 
-            # Change indicator
             if len(s1_day) > 0 and len(s2_day) > 0:
-                change = ((s2_day.mean() - s1_day.mean()) / s1_day.mean()) * 100
+                change = ((s2_avg - s1_avg) / s1_avg) * 100
                 row['Change'] = f"{change:+.1f}%"
             else:
                 row['Change'] = '-'
 
             stats_data.append(row)
+
+        # Bar chart with error bars for min/max
+        fig_bar = go.Figure()
+
+        # Compute error bar values (distance from avg to min/max)
+        s1_err_minus = [a - m if a is not None and m is not None else 0 for a, m in zip(s1_avgs, s1_mins)]
+        s1_err_plus = [m - a if a is not None and m is not None else 0 for a, m in zip(s1_avgs, s1_maxs)]
+        s2_err_minus = [a - m if a is not None and m is not None else 0 for a, m in zip(s2_avgs, s2_mins)]
+        s2_err_plus = [m - a if a is not None and m is not None else 0 for a, m in zip(s2_avgs, s2_maxs)]
+
+        fig_bar.add_trace(go.Bar(
+            name='Session 1', x=chart_days, y=s1_avgs,
+            marker_color=SESSION1_COLOR,
+            error_y=dict(type='data', symmetric=False,
+                         array=s1_err_plus, arrayminus=s1_err_minus,
+                         color='#333333', thickness=1.5, width=4)
+        ))
+        fig_bar.add_trace(go.Bar(
+            name='Session 2', x=chart_days, y=s2_avgs,
+            marker_color=SESSION2_COLOR,
+            error_y=dict(type='data', symmetric=False,
+                         array=s2_err_plus, arrayminus=s2_err_minus,
+                         color='#333333', thickness=1.5, width=4)
+        ))
+        fig_bar.update_layout(
+            barmode='group',
+            title=f'{dn} - Daily Average (with Min/Max range)',
+            yaxis_title=dn,
+            height=400,
+            legend=dict(orientation='h', yanchor='top', y=-0.15, xanchor='center', x=0.5)
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
         st.dataframe(pd.DataFrame(stats_data), use_container_width=True, hide_index=True)
 
