@@ -231,7 +231,7 @@ def render_session_tab(session_key, session_config):
                 key=f"{session_key}_axis_{param}",
                 horizontal=True
             )
-            y_axis_assignment[param] = "y1" if axis == "Left Y-axis" else "y2"
+            y_axis_assignment[param] = "y" if axis == "Left Y-axis" else "y2"
 
     # --- Day filtering ---
     if date_col:
@@ -259,6 +259,17 @@ def render_session_tab(session_key, session_config):
             filtered_df = pd.DataFrame()
     else:
         filtered_df = df
+
+    # Apply dust outlier filter if enabled globally
+    if filter_outliers_global and 'Dust' in filtered_df.columns and not filtered_df.empty:
+        q1 = filtered_df['Dust'].quantile(0.25)
+        q3 = filtered_df['Dust'].quantile(0.75)
+        iqr = q3 - q1
+        upper_bound = q3 + 3 * iqr
+        outlier_count = (filtered_df['Dust'] > upper_bound).sum()
+        filtered_df = filtered_df[filtered_df['Dust'] <= upper_bound].copy()
+        if outlier_count > 0:
+            st.info(f"Removed {outlier_count} dust outlier readings above {upper_bound:.0f} μg/m³ (IQR method, 3x threshold).")
 
     # --- Chart ---
     st.header("Chart")
@@ -383,7 +394,7 @@ def render_session_tab(session_key, session_config):
     has_right_axis = any(a == "y2" for a in y_axis_assignment.values())
     display_param_names = [param_display_map[p] for p in selected_params]
 
-    left_params_with_colors = [(param_display_map[p], param_colors[p]) for p in selected_params if y_axis_assignment[p] == "y1"]
+    left_params_with_colors = [(param_display_map[p], param_colors[p]) for p in selected_params if y_axis_assignment[p] == "y"]
     right_params_with_colors = [(param_display_map[p], param_colors[p]) for p in selected_params if y_axis_assignment[p] == "y2"]
 
     if date_col:
@@ -567,26 +578,23 @@ def render_comparison_tab():
 
     param_display_map = {col: get_display_name(col) for col in common_params}
 
-    # Sidebar controls for comparison
-    with st.sidebar:
-        st.header("Comparison Settings")
+    # Parameter selector in main content area
+    display_names = [param_display_map[c] for c in common_params]
+    param_reverse = {v: k for k, v in param_display_map.items()}
+    default = display_names[:min(3, len(display_names))]
 
-        display_names = [param_display_map[c] for c in common_params]
-        param_reverse = {v: k for k, v in param_display_map.items()}
-        default = [display_names[0]] if display_names else []
+    selected_display = st.multiselect(
+        "Select Parameters to Compare",
+        display_names,
+        default=default,
+        key="comparison_params"
+    )
 
-        selected_display = st.multiselect(
-            "Parameters to Compare",
-            display_names,
-            default=default,
-            key="comparison_params"
-        )
+    if not selected_display:
+        st.warning("Select at least one parameter.")
+        return
 
-        if not selected_display:
-            st.warning("Select at least one parameter.")
-            st.stop()
-
-        selected = [param_reverse[d] for d in selected_display]
+    selected = [param_reverse[d] for d in selected_display]
 
     # Build day-of-week aligned data
     # Session 1: starts Tue Nov 11. Session 2: starts Tue Mar 17.
@@ -634,6 +642,24 @@ def render_comparison_tab():
     sel_days = st.session_state.comparison_selected_days
     f1 = df1_copy[df1_copy['_weekday'].isin(sel_days)]
     f2 = df2_copy[df2_copy['_weekday'].isin(sel_days)]
+
+    # Apply dust outlier filter if enabled globally
+    if filter_outliers_global:
+        for label, fdf in [('Session 1', f1), ('Session 2', f2)]:
+            if 'Dust' in fdf.columns and not fdf.empty:
+                q1 = fdf['Dust'].quantile(0.25)
+                q3 = fdf['Dust'].quantile(0.75)
+                iqr = q3 - q1
+                upper = q3 + 3 * iqr
+                count = (fdf['Dust'] > upper).sum()
+                if count > 0:
+                    st.info(f"{label}: Removed {count} dust outlier readings above {upper:.0f} μg/m³")
+        if 'Dust' in f1.columns and not f1.empty:
+            q1, q3 = f1['Dust'].quantile(0.25), f1['Dust'].quantile(0.75)
+            f1 = f1[f1['Dust'] <= q3 + 3 * (q3 - q1)]
+        if 'Dust' in f2.columns and not f2.empty:
+            q1, q3 = f2['Dust'].quantile(0.25), f2['Dust'].quantile(0.75)
+            f2 = f2[f2['Dust'] <= q3 + 3 * (q3 - q1)]
 
     if f1.empty and f2.empty:
         st.warning("No data for selected days.")
@@ -803,6 +829,12 @@ def render_comparison_tab():
 
 # --- Main app ---
 st.title("Indoor Air Quality Monitoring - 73 Chestnut Road")
+
+with st.sidebar:
+    st.header("Global Settings")
+    filter_outliers_global = st.checkbox("Remove dust outliers", value=False,
+                                         key="global_filter_outliers",
+                                         help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
 
 tab1, tab2, tab3 = st.tabs(["Session 1 (Nov 2025)", "Session 2 (Mar 2026)", "Comparison"])
 
