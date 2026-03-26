@@ -231,7 +231,7 @@ def render_session_tab(session_key, session_config):
                 key=f"{session_key}_axis_{param}",
                 horizontal=True
             )
-            y_axis_assignment[param] = "y1" if axis == "Left Y-axis" else "y2"
+            y_axis_assignment[param] = "y" if axis == "Left Y-axis" else "y2"
 
     # --- Day filtering ---
     if date_col:
@@ -383,7 +383,7 @@ def render_session_tab(session_key, session_config):
     has_right_axis = any(a == "y2" for a in y_axis_assignment.values())
     display_param_names = [param_display_map[p] for p in selected_params]
 
-    left_params_with_colors = [(param_display_map[p], param_colors[p]) for p in selected_params if y_axis_assignment[p] == "y1"]
+    left_params_with_colors = [(param_display_map[p], param_colors[p]) for p in selected_params if y_axis_assignment[p] == "y"]
     right_params_with_colors = [(param_display_map[p], param_colors[p]) for p in selected_params if y_axis_assignment[p] == "y2"]
 
     if date_col:
