@@ -260,10 +260,8 @@ def render_session_tab(session_key, session_config):
     else:
         filtered_df = df
 
-    # Dust outlier filter
-    filter_outliers = st.checkbox("Remove dust outliers", value=False, key=f"{session_key}_filter_outliers",
-                                   help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
-    if filter_outliers and 'Dust' in filtered_df.columns and not filtered_df.empty:
+    # Apply dust outlier filter if enabled globally
+    if filter_outliers_global and 'Dust' in filtered_df.columns and not filtered_df.empty:
         q1 = filtered_df['Dust'].quantile(0.25)
         q3 = filtered_df['Dust'].quantile(0.75)
         iqr = q3 - q1
@@ -598,9 +596,6 @@ def render_comparison_tab():
 
     selected = [param_reverse[d] for d in selected_display]
 
-    filter_outliers = st.checkbox("Remove dust outliers", value=False, key="comparison_filter_outliers",
-                                   help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
-
     # Build day-of-week aligned data
     # Session 1: starts Tue Nov 11. Session 2: starts Tue Mar 17.
     # Align by day-of-week name + time of day.
@@ -648,8 +643,8 @@ def render_comparison_tab():
     f1 = df1_copy[df1_copy['_weekday'].isin(sel_days)]
     f2 = df2_copy[df2_copy['_weekday'].isin(sel_days)]
 
-    # Apply dust outlier filter
-    if filter_outliers:
+    # Apply dust outlier filter if enabled globally
+    if filter_outliers_global:
         for label, fdf in [('Session 1', f1), ('Session 2', f2)]:
             if 'Dust' in fdf.columns and not fdf.empty:
                 q1 = fdf['Dust'].quantile(0.25)
@@ -834,6 +829,12 @@ def render_comparison_tab():
 
 # --- Main app ---
 st.title("Indoor Air Quality Monitoring - 73 Chestnut Road")
+
+with st.sidebar:
+    st.header("Global Settings")
+    filter_outliers_global = st.checkbox("Remove dust outliers", value=False,
+                                         key="global_filter_outliers",
+                                         help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
 
 tab1, tab2, tab3 = st.tabs(["Session 1 (Nov 2025)", "Session 2 (Mar 2026)", "Comparison"])
 
