@@ -262,14 +262,11 @@ def render_session_tab(session_key, session_config):
 
     # Apply dust outlier filter if enabled globally
     if filter_outliers_global and 'Dust' in filtered_df.columns and not filtered_df.empty:
-        q1 = filtered_df['Dust'].quantile(0.25)
-        q3 = filtered_df['Dust'].quantile(0.75)
-        iqr = q3 - q1
-        upper_bound = q3 + 3 * iqr
-        outlier_count = (filtered_df['Dust'] > upper_bound).sum()
-        filtered_df = filtered_df[filtered_df['Dust'] <= upper_bound].copy()
+        dust_threshold = 100
+        outlier_count = (filtered_df['Dust'] > dust_threshold).sum()
+        filtered_df = filtered_df[filtered_df['Dust'] <= dust_threshold].copy()
         if outlier_count > 0:
-            st.info(f"Removed {outlier_count} dust outlier readings above {upper_bound:.0f} μg/m³ (IQR method, 3x threshold).")
+            st.info(f"Removed {outlier_count} dust readings above {dust_threshold} μg/m³.")
 
     # --- Chart ---
     st.header("Chart")
@@ -645,21 +642,16 @@ def render_comparison_tab():
 
     # Apply dust outlier filter if enabled globally
     if filter_outliers_global:
+        dust_threshold = 100
         for label, fdf in [('Session 1', f1), ('Session 2', f2)]:
             if 'Dust' in fdf.columns and not fdf.empty:
-                q1 = fdf['Dust'].quantile(0.25)
-                q3 = fdf['Dust'].quantile(0.75)
-                iqr = q3 - q1
-                upper = q3 + 3 * iqr
-                count = (fdf['Dust'] > upper).sum()
+                count = (fdf['Dust'] > dust_threshold).sum()
                 if count > 0:
-                    st.info(f"{label}: Removed {count} dust outlier readings above {upper:.0f} μg/m³")
+                    st.info(f"{label}: Removed {count} dust readings above {dust_threshold} μg/m³")
         if 'Dust' in f1.columns and not f1.empty:
-            q1, q3 = f1['Dust'].quantile(0.25), f1['Dust'].quantile(0.75)
-            f1 = f1[f1['Dust'] <= q3 + 3 * (q3 - q1)]
+            f1 = f1[f1['Dust'] <= dust_threshold]
         if 'Dust' in f2.columns and not f2.empty:
-            q1, q3 = f2['Dust'].quantile(0.25), f2['Dust'].quantile(0.75)
-            f2 = f2[f2['Dust'] <= q3 + 3 * (q3 - q1)]
+            f2 = f2[f2['Dust'] <= dust_threshold]
 
     if f1.empty and f2.empty:
         st.warning("No data for selected days.")
@@ -713,9 +705,19 @@ def render_comparison_tab():
                 connectgaps=False
             ))
 
-        # X-axis: show day names
-        tickvals = [ref_monday + timedelta(days=d) for d in range(7)]
-        ticktext = [day_names[d] for d in range(7)]
+        # X-axis: day names at midnight, hourly minor ticks
+        tickvals = []
+        ticktext = []
+        for d in range(7):
+            for h in range(24):
+                t = ref_monday + timedelta(days=d, hours=h)
+                tickvals.append(t)
+                if h == 0:
+                    ticktext.append(f'{day_names[d]}')
+                elif h % 3 == 0:
+                    ticktext.append(f'{h:02d}:00')
+                else:
+                    ticktext.append('')
 
         fig.update_layout(
             title=f'{dn} - Session 1 (Nov 2025) vs Session 2 (Mar 2026)',
@@ -723,7 +725,8 @@ def render_comparison_tab():
                 title='Day of Week',
                 tickvals=tickvals,
                 ticktext=ticktext,
-                showgrid=True, gridcolor='#999999',
+                showgrid=True, gridcolor='#e0e0e0', gridwidth=0.5,
+                minor=dict(showgrid=False),
             ),
             yaxis=dict(title=dn),
             hovermode='x unified',
@@ -834,7 +837,7 @@ with st.sidebar:
     st.header("Global Settings")
     filter_outliers_global = st.checkbox("Remove dust outliers", value=False,
                                          key="global_filter_outliers",
-                                         help="Removes anomalous dust spikes (e.g. sensor bumps) using IQR method")
+                                         help="Removes dust readings above 100 μg/m³ (likely sensor bumps)")
 
 tab1, tab2, tab3 = st.tabs(["Session 1 (Nov 2025)", "Session 2 (Mar 2026)", "Comparison"])
 
