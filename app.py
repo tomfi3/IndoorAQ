@@ -705,9 +705,19 @@ def render_comparison_tab():
                 connectgaps=False
             ))
 
-        # X-axis: show day names
-        tickvals = [ref_monday + timedelta(days=d) for d in range(7)]
-        ticktext = [day_names[d] for d in range(7)]
+        # X-axis: day names at midnight, hourly minor ticks
+        tickvals = []
+        ticktext = []
+        for d in range(7):
+            for h in range(24):
+                t = ref_monday + timedelta(days=d, hours=h)
+                tickvals.append(t)
+                if h == 0:
+                    ticktext.append(f'{day_names[d]}')
+                elif h % 3 == 0:
+                    ticktext.append(f'{h:02d}:00')
+                else:
+                    ticktext.append('')
 
         fig.update_layout(
             title=f'{dn} - Session 1 (Nov 2025) vs Session 2 (Mar 2026)',
@@ -715,7 +725,8 @@ def render_comparison_tab():
                 title='Day of Week',
                 tickvals=tickvals,
                 ticktext=ticktext,
-                showgrid=True, gridcolor='#999999',
+                showgrid=True, gridcolor='#e0e0e0', gridwidth=0.5,
+                minor=dict(showgrid=False),
             ),
             yaxis=dict(title=dn),
             hovermode='x unified',
